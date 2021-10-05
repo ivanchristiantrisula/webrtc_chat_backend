@@ -1,6 +1,7 @@
-import { ObjectID } from "mongodb";
-import { arrayify } from "tslint/lib/utils";
-
+//import { ObjectID } from "mongodb";
+const arrayify = require("tslint/lib/utils");
+const { ObjectId } = require("mongodb");
+//@ts-ignore
 const mongoose = require("mongoose");
 const uniqueValidator = require("mongoose-unique-validator");
 
@@ -60,7 +61,7 @@ const userSchema = new mongoose.Schema({
     required: false,
   },
   banReportID: {
-    type: ObjectID,
+    type: ObjectId,
     required: false,
   },
 });

@@ -1,16 +1,15 @@
-import { ObjectID } from "bson";
-import { Timestamp } from "mongodb";
-import { arrayify } from "tslint/lib/utils";
+const { ObjectId } = require("mongodb");
 
+//@ts-ignore
 const mongoose = require("mongoose");
 
 const reportSchema = new mongoose.Schema({
   reporter: {
-    type: ObjectID,
+    type: ObjectId,
     required: true,
   },
   reportee: {
-    type: ObjectID,
+    type: ObjectId,
     required: true,
   },
   type: {
