@@ -139,9 +139,15 @@ app.post("/api/user/login", function (req, res) { return __awaiter(void 0, void 
                         userData["bio"] = doc.bio;
                         userData["profilepicture"] = doc.profilepicture;
                         var token = require("./library/generateToken.ts")(userData);
-                        res.cookie("token", token, { httpOnly: false });
+                        res.cookie("token", token, {
+                            secure: true,
+                            sameSite: false,
+                            httpOnly: false,
+                            domain: process.env.FRONTEND_URI
+                        });
                         res.status(200).send({
-                            user: userData
+                            user: userData,
+                            token: token
                         });
                     }
                     else {
@@ -729,7 +735,7 @@ io.on("connection", function (socket) {
         });
     });
 });
-server.listen(3001, function () {
+server.listen(process.env.PORT, function () {
     console.log("Backend running at port 3001");
 });
 module.exports = app;

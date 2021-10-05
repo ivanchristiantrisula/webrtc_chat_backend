@@ -104,6 +104,7 @@ app.post("/api/user/login", async (req, res) => {
           });
           res.status(200).send({
             user: userData,
+            token: token,
           });
         } else {
           res.status(401).send({ errors: ["Wrong email or password"] });
