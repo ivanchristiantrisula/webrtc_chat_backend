@@ -100,6 +100,7 @@ app.post("/api/user/login", async (req, res) => {
             secure: true,
             sameSite: false,
             httpOnly: false,
+            domain: process.env.FRONTEND_URI,
           });
           res.status(200).send({
             user: userData,
