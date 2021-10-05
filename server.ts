@@ -96,7 +96,10 @@ app.post("/api/user/login", async (req, res) => {
           userData["profilepicture"] = doc.profilepicture;
           let token = require("./library/generateToken.ts")(userData);
 
-          res.cookie("token", token, { httpOnly: false });
+          res.cookie("token", token, {
+            domain: process.env.FRONTEND_URI,
+            httpOnly: false,
+          });
           res.status(200).send({
             user: userData,
           });
