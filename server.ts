@@ -17,6 +17,10 @@ app.use(express.static(__dirname + "/uploads"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.get("/", (req, res) => {
+  res.status(200).send("Server is OK");
+});
+
 const corsConfig = {
   credentials: true,
   origin: process.env.FRONTEND_URI,
