@@ -180,8 +180,8 @@ app.get("/api/user/findUser", function (req, res) { return __awaiter(void 0, voi
 app.post("/api/user/addFriend", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var user_1, target_1;
     return __generator(this, function (_a) {
-        if (req.cookies) {
-            user_1 = decodeToken(req.cookies.token);
+        if (req.body.token) {
+            user_1 = decodeToken(req.body.token);
             target_1 = req.body.user;
             if (user_1) {
                 User.find([
@@ -219,8 +219,8 @@ app.post("/api/user/addFriend", function (req, res) { return __awaiter(void 0, v
     });
 }); });
 app.get("/api/user/getPendingFriends", function (req, res) {
-    if (req.cookies) {
-        var user = decodeToken(req.cookies.token);
+    if (req.query.token) {
+        var user = decodeToken(req.query.token);
         if (user) {
             User.findOne({ _id: user._id }, "pendings", function (err, docs) {
                 if (err) {
@@ -239,8 +239,8 @@ app.get("/api/user/getPendingFriends", function (req, res) {
     }
 });
 app.get("/api/user/getFriends", function (req, res) {
-    if (req.cookies) {
-        var user = decodeToken(req.cookies.token);
+    if (req.query.token) {
+        var user = decodeToken(req.query.token);
         if (user) {
             User.findOne({ _id: user._id }, "friends", function (err, docs) {
                 if (err) {
@@ -259,8 +259,8 @@ app.get("/api/user/getFriends", function (req, res) {
     }
 });
 app.get("/api/user/getBlocks", function (req, res) {
-    if (req.cookies) {
-        var user = decodeToken(req.cookies.token);
+    if (req.query.token) {
+        var user = decodeToken(req.query.token);
         if (user) {
             User.findOne({ _id: user._id }, "blocks", function (err, docs) {
                 if (err) {
@@ -279,8 +279,8 @@ app.get("/api/user/getBlocks", function (req, res) {
     }
 });
 app.post("/api/user/acceptFriendRequest", function (req, res) {
-    if (req.cookies) {
-        var user = decodeToken(req.cookies.token);
+    if (req.query.token) {
+        var user = decodeToken(req.body.token);
         var target = req.body.target;
         if (user) {
             var userData = {
@@ -316,8 +316,8 @@ app.post("/api/user/acceptFriendRequest", function (req, res) {
     }
 });
 app.post("/api/user/rejectFriendRequest", function (req, res) {
-    if (req.cookies) {
-        var user = decodeToken(req.cookies.token);
+    if (req.body.token) {
+        var user = decodeToken(req.body.token);
         var target = req.body.target;
         if (user) {
             var userData = {
@@ -342,8 +342,8 @@ app.post("/api/user/rejectFriendRequest", function (req, res) {
     }
 });
 app.post("/api/user/updateMBTI", function (req, res) {
-    if (req.cookies) {
-        var user = decodeToken(req.cookies.token);
+    if (req.body.token) {
+        var user = decodeToken(req.body.token);
         if (user) {
             var userData = {
                 _id: user._id,
@@ -367,8 +367,8 @@ app.post("/api/user/updateMBTI", function (req, res) {
     }
 });
 app.post("/api/user/updateProfile", function (req, res) {
-    if (req.cookies) {
-        var user = decodeToken(req.cookies.token);
+    if (req.body.token) {
+        var user = decodeToken(req.body.token);
         if (user) {
             console.log(req.body);
             var userData = {
@@ -405,8 +405,8 @@ app.post("/api/user/updateProfile", function (req, res) {
     }
 });
 app.post("/api/user/changePassword", function (req, res) {
-    if (req.cookies) {
-        var user_2 = decodeToken(req.cookies.token);
+    if (req.body.token) {
+        var user_2 = decodeToken(req.body.token);
         if (user_2) {
             var userData = {
                 _id: user_2._id,
@@ -466,8 +466,8 @@ app.post("/api/user/changePassword", function (req, res) {
     }
 });
 app.get("/api/user/getFriendsRecommendation", function (req, res) {
-    if (req.cookies) {
-        var user = decodeToken(req.cookies.token);
+    if (req.query.token) {
+        var user = decodeToken(req.query.token);
         if (user) {
             var x_1;
             User.findById(user._id, function (err, docs) {
@@ -514,8 +514,8 @@ var upload = multer({
     storage: storage
 });
 app.post("/api/user/uploadProfilePicture", upload.single("file" /* name attribute of <file> element in your form */), function (req, res, next) {
-    if (req.cookies) {
-        var user = decodeToken(req.cookies.token);
+    if (req.body.token) {
+        var user = decodeToken(req.body.token);
         if (user) {
             var userData = {
                 _id: user._id,
@@ -578,12 +578,12 @@ app.post("/api/user/unbanUser", function (req, res) {
     res.status(200).send("User unbanned!");
 });
 app.get("/testCookie", function (req, res) {
-    console.log(req.cookies);
-    console.log(decodeToken(req.cookies.token));
+    console.log(req.body.token);
+    console.log(decodeToken(req.body.token));
 });
 app.post("/api/report/create", function (req, res) {
-    if (req.cookies) {
-        var user = decodeToken(req.cookies.token);
+    if (req.body.token) {
+        var user = decodeToken(req.body.token);
         if (user) {
             var newReport = new Report({
                 reporter: req.body.reporter,
@@ -661,8 +661,8 @@ var io = socket(server, {
     }
 });
 io.on("connection", function (socket) {
-    var _a, _b, _c;
-    var userData = require("./library/decodeToken")((_c = (_b = (_a = socket === null || socket === void 0 ? void 0 : socket.handshake) === null || _a === void 0 ? void 0 : _a.headers) === null || _b === void 0 ? void 0 : _b.cookie) === null || _c === void 0 ? void 0 : _c.replace("token=", ""));
+    var _a;
+    var userData = require("./library/decodeToken")((_a = socket === null || socket === void 0 ? void 0 : socket.handshake) === null || _a === void 0 ? void 0 : _a.query.token);
     if (userData) {
         if (!users[socket.id]) {
             users[socket.id] = userData;

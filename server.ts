@@ -132,8 +132,8 @@ app.get("/api/user/findUser", async (req, res) => {
 });
 
 app.post("/api/user/addFriend", async (req, res) => {
-  if (req.cookies) {
-    let user = decodeToken(req.cookies.token);
+  if (req.body.token) {
+    let user = decodeToken(req.body.token);
     let target = req.body.user;
     if (user) {
       User.find(
@@ -174,8 +174,8 @@ app.post("/api/user/addFriend", async (req, res) => {
 });
 
 app.get("/api/user/getPendingFriends", (req, res) => {
-  if (req.cookies) {
-    let user = decodeToken(req.cookies.token);
+  if (req.query.token) {
+    let user = decodeToken(req.query.token);
     if (user) {
       User.findOne({ _id: user._id }, "pendings", (err, docs) => {
         if (err) {
@@ -194,8 +194,8 @@ app.get("/api/user/getPendingFriends", (req, res) => {
 });
 
 app.get("/api/user/getFriends", (req, res) => {
-  if (req.cookies) {
-    let user = decodeToken(req.cookies.token);
+  if (req.query.token) {
+    let user = decodeToken(req.query.token);
     if (user) {
       User.findOne({ _id: user._id }, "friends", (err, docs) => {
         if (err) {
@@ -214,8 +214,8 @@ app.get("/api/user/getFriends", (req, res) => {
 });
 
 app.get("/api/user/getBlocks", (req, res) => {
-  if (req.cookies) {
-    let user = decodeToken(req.cookies.token);
+  if (req.query.token) {
+    let user = decodeToken(req.query.token);
     if (user) {
       User.findOne({ _id: user._id }, "blocks", (err, docs) => {
         if (err) {
@@ -234,8 +234,8 @@ app.get("/api/user/getBlocks", (req, res) => {
 });
 
 app.post("/api/user/acceptFriendRequest", (req, res) => {
-  if (req.cookies) {
-    let user = decodeToken(req.cookies.token);
+  if (req.query.token) {
+    let user = decodeToken(req.body.token);
     let target = req.body.target;
 
     if (user) {
@@ -283,8 +283,8 @@ app.post("/api/user/acceptFriendRequest", (req, res) => {
 });
 
 app.post("/api/user/rejectFriendRequest", (req, res) => {
-  if (req.cookies) {
-    let user = decodeToken(req.cookies.token);
+  if (req.body.token) {
+    let user = decodeToken(req.body.token);
     let target = req.body.target;
 
     if (user) {
@@ -314,8 +314,8 @@ app.post("/api/user/rejectFriendRequest", (req, res) => {
 });
 
 app.post("/api/user/updateMBTI", (req, res) => {
-  if (req.cookies) {
-    let user = decodeToken(req.cookies.token);
+  if (req.body.token) {
+    let user = decodeToken(req.body.token);
 
     if (user) {
       let userData = {
@@ -344,8 +344,8 @@ app.post("/api/user/updateMBTI", (req, res) => {
 });
 
 app.post("/api/user/updateProfile", (req, res) => {
-  if (req.cookies) {
-    let user = decodeToken(req.cookies.token);
+  if (req.body.token) {
+    let user = decodeToken(req.body.token);
 
     if (user) {
       console.log(req.body);
@@ -389,8 +389,8 @@ app.post("/api/user/updateProfile", (req, res) => {
 });
 
 app.post("/api/user/changePassword", (req, res) => {
-  if (req.cookies) {
-    let user = decodeToken(req.cookies.token);
+  if (req.body.token) {
+    let user = decodeToken(req.body.token);
 
     if (user) {
       let userData = {
@@ -443,8 +443,8 @@ app.post("/api/user/changePassword", (req, res) => {
 });
 
 app.get("/api/user/getFriendsRecommendation", (req, res) => {
-  if (req.cookies) {
-    let user = decodeToken(req.cookies.token);
+  if (req.query.token) {
+    let user = decodeToken(req.query.token);
 
     if (user) {
       let x;
@@ -501,8 +501,8 @@ app.post(
   "/api/user/uploadProfilePicture",
   upload.single("file" /* name attribute of <file> element in your form */),
   (req, res, next) => {
-    if (req.cookies) {
-      let user = decodeToken(req.cookies.token);
+    if (req.body.token) {
+      let user = decodeToken(req.body.token);
 
       if (user) {
         let userData = {
@@ -569,13 +569,13 @@ app.post("/api/user/unbanUser", (req, res) => {
 });
 
 app.get("/testCookie", (req, res) => {
-  console.log(req.cookies);
-  console.log(decodeToken(req.cookies.token));
+  console.log(req.body.token);
+  console.log(decodeToken(req.body.token));
 });
 
 app.post("/api/report/create", (req, res) => {
-  if (req.cookies) {
-    let user = decodeToken(req.cookies.token);
+  if (req.body.token) {
+    let user = decodeToken(req.body.token);
 
     if (user) {
       let newReport = new Report({
@@ -659,7 +659,7 @@ const io = socket(server, {
 
 io.on("connection", (socket: Socket) => {
   let userData = require("./library/decodeToken")(
-    socket?.handshake?.headers?.cookie?.replace("token=", "")
+    socket?.handshake?.query.token
   );
 
   if (userData) {
