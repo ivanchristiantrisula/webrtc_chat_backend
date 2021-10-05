@@ -97,7 +97,7 @@ app.post("/api/user/login", async (req, res) => {
           let token = require("./library/generateToken.ts")(userData);
 
           res.cookie("token", token, {
-            secure: false,
+            secure: true,
             sameSite: false,
             httpOnly: false,
           });
