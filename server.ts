@@ -97,7 +97,8 @@ app.post("/api/user/login", async (req, res) => {
           let token = require("./library/generateToken.ts")(userData);
 
           res.cookie("token", token, {
-            domain: process.env.FRONTEND_URI,
+            secure: false,
+            sameSite: false,
             httpOnly: false,
           });
           res.status(200).send({
