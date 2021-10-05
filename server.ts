@@ -743,7 +743,7 @@ io.on("connection", (socket: Socket) => {
   });
 });
 
-server.listen(3001, () => {
+server.listen(process.env.PORT, () => {
   console.log("Backend running at port 3001");
 });
 
