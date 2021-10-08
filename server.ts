@@ -62,8 +62,6 @@ app.post("/api/user/register", async (req, res) => {
       email: email,
       username: username,
       profilepicture: "default",
-      isBanned: true,
-      bannedDate: null,
     });
     newUser.save(function (err, u) {
       if (err) return res.status(400).send({ errors: [err.message] });
@@ -96,12 +94,12 @@ app.post("/api/user/login", async (req, res) => {
           userData["profilepicture"] = doc.profilepicture;
           let token = require("./library/generateToken.ts")(userData);
 
-          res.cookie("token", token, {
-            secure: true,
-            sameSite: false,
-            httpOnly: false,
-            domain: process.env.FRONTEND_URI,
-          });
+          if (doc.isBanned) {
+            res.status(403).send({
+              errors: ["You are banned from this site"],
+            });
+            return;
+          }
           res.status(200).send({
             user: userData,
             token: token,
