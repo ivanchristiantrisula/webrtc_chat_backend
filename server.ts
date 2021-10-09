@@ -232,7 +232,7 @@ app.get("/api/user/getBlocks", (req, res) => {
 });
 
 app.post("/api/user/acceptFriendRequest", (req, res) => {
-  if (req.query.token) {
+  if (req.body.token) {
     let user = decodeToken(req.body.token);
     let target = req.body.target;
 
