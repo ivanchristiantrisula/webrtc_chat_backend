@@ -566,10 +566,46 @@ app.post("/api/user/unbanUser", (req, res) => {
   res.status(200).send("User unbanned!");
 });
 
-app.get("/testCookie", (req, res) => {
-  console.log(req.body.token);
-  console.log(decodeToken(req.body.token));
-});
+app.post("/api/user/sendResetPasswordCode", (req,res) => {
+  let email = req.body.email;
+
+  User.findOne({ email : email }, function (err, docs) {
+    if(docs){
+      let code = Math.floor(100000 + Math.random() * 900000);
+
+      res.status(200).send({code : code})
+    }else{
+      res.status(400).send("User not found")
+    }
+  });
+})
+
+app.post("/api/user/resetPassword",  (req,res)=>{
+  let password = req.body.password
+  let email = req.body.email
+
+  User.findOne({ email: email }, async function (err, doc) {
+    if (!err) {
+      let hashedPass = await bcrypt.hash(password, 10);
+          User.updateOne(
+            { email : email },
+            { $set: { password: hashedPass } },
+            (err, docs) => {
+              if (err) {
+                res.status(500).send(err);
+                return;
+              } else {
+                res.status(200).send("Success");
+                return;
+              }
+            }
+          );
+    } else {
+      res.status(401).send(err);
+      return;
+    }
+  });
+})
 
 app.post("/api/report/create", (req, res) => {
   if (req.body.token) {
