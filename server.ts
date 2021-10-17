@@ -13,6 +13,7 @@ const decodeToken = require("./library/decodeToken");
 const _ = require("underscore");
 const MBTIComp = require("./library/compability.json");
 const multer = require("multer");
+const mailer = require('nodemailer');
 
 let User = require("./models/userModel.ts");
 let Report = require("./models/report/chatReportModel");
@@ -572,6 +573,25 @@ app.post("/api/user/sendResetPasswordCode", (req,res) => {
   User.findOne({ email : email }, function (err, docs) {
     if(docs){
       let code = Math.floor(100000 + Math.random() * 900000);
+
+      let transporter = mailer.createTransport({
+        service : "gmail",
+        auth : {
+          user : process.env.EMAIL,
+          pass : process.env.PASSWORD,
+        }
+      })
+
+      let mailOptions = {
+        from : "ivanchristian.webrtc@gmail.com",
+        to : email,
+        subject : "Reset password verification code",
+        text : `You have requested to reset your password for your WebRTC Chat App account. Here is the verification code : ${code}`
+      }
+
+      transporter.sendMail(mailOptions, (err, info) => {
+        if(err) throw err;
+      })
 
       res.status(200).send({code : code})
     }else{
