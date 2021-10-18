@@ -24,3 +24,4 @@ yarn-error.log*
 .env
 /uploads/profilepictures/*
 !/uploads/profilepictures/default.png
+server.js
