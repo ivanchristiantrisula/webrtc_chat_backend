@@ -753,6 +753,7 @@ io.on("connection", (socket: Socket) => {
     io.to(data.to).emit("meetingInvitation", {
       meetingID: data.meetingID,
       from: socket.id,
+      senderInfo : userData
     });
   });
 
