@@ -9,12 +9,16 @@
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
-    "module": "commonjs",
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": false,
     "noEmit": true,
-    "jsx": "react-jsx",
-    "noImplicitAny": false
-  }
+    "noImplicitAny": false,
+    "outDir": "./dist",
+    "module": "es5"
+  },
+  "files": [
+    "server.ts"
+  ]
+  
 }
