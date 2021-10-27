@@ -12,6 +12,9 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "engines": {
+    "node": "16.x.x"
+  },
   "dependencies": {
     "@types/express": "^4.17.11",
     "@types/multer": "^1.4.7",
