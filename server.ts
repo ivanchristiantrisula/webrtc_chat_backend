@@ -765,7 +765,7 @@ io.on("connection", (socket: Socket) => {
 
       meetingRooms[data.meetingID].forEach((socketID) => {
         if (socket.id !== socketID)
-          io.to(socketID).emit("newMeetingMember", socket.id);
+          io.to(socketID).emit("newMeetingMember", {sid : socketID, userData : userData});
       });
     }
   });
