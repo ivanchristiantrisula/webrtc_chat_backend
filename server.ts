@@ -13,7 +13,7 @@ const decodeToken = require("./library/decodeToken");
 const _ = require("underscore");
 const MBTIComp = require("./library/compability.json");
 const multer = require("multer");
-const mailer = require('nodemailer');
+const mailer = require("nodemailer");
 
 let User = require("./models/userModel.ts");
 let Report = require("./models/report/chatReportModel");
@@ -46,7 +46,7 @@ mongoose.connect(process.env.DATABASE_URI, {
 const db = mongoose.connection;
 db.on("error", console.error.bind(console, "connection error:"));
 db.once("open", function () {
-  console.log("DB successfully connected!");
+  console.info("DB successfully connected!");
 });
 
 app.post("/api/user/register", async (req, res) => {
@@ -83,7 +83,7 @@ app.post("/api/user/login", async (req, res) => {
     if (err) return res.status(400).send({ errors: err });
     if (doc != null) {
       bcrypt.compare(password, doc.password, (err, result) => {
-        if (err) return console.log(err);
+        if (err) return console.error(err);
         if (result) {
           let userData = {};
           userData["_id"] = doc._id;
@@ -154,9 +154,7 @@ app.post("/api/user/addFriend", async (req, res) => {
             User.updateOne(
               { _id: target._id },
               { $addToSet: { pendings: userData } },
-              (err, result) => {
-                console.log(result);
-              }
+              (err, result) => {}
             );
             res.status(200).send("Success");
           } else {
@@ -178,7 +176,7 @@ app.get("/api/user/getPendingFriends", (req, res) => {
     if (user) {
       User.findOne({ _id: user._id }, "pendings", (err, docs) => {
         if (err) {
-          console.log(err);
+          console.error(err);
           res.status(500).send({ errors: err });
         }
 
@@ -198,7 +196,7 @@ app.get("/api/user/getFriends", (req, res) => {
     if (user) {
       User.findOne({ _id: user._id }, "friends", (err, docs) => {
         if (err) {
-          console.log(err);
+          console.error(err);
           res.status(500).send({ errors: err });
         }
 
@@ -218,7 +216,7 @@ app.get("/api/user/getBlocks", (req, res) => {
     if (user) {
       User.findOne({ _id: user._id }, "blocks", (err, docs) => {
         if (err) {
-          console.log(err);
+          console.error(err);
           res.status(500).send({ errors: err });
         }
 
@@ -347,7 +345,6 @@ app.post("/api/user/updateProfile", (req, res) => {
     let user = decodeToken(req.body.token);
 
     if (user) {
-      console.log(req.body);
       let userData = {
         _id: user._id,
         name: user.name,
@@ -359,7 +356,6 @@ app.post("/api/user/updateProfile", (req, res) => {
         { _id: user._id },
         { $set: { name: req.body.name, bio: req.body.bio } },
         (err, docs) => {
-          console.log(docs);
           if (err) res.status(500).send({ errors: [err] });
           return;
         }
@@ -407,7 +403,7 @@ app.post("/api/user/changePassword", (req, res) => {
       User.findOne({ _id: user._id }, function (err, doc) {
         if (!err) {
           bcrypt.compare(req.body.old, doc.password, async (err, result) => {
-            if (err) return console.log(err);
+            if (err) return console.error(err);
             if (result) {
               let hashedPass = await bcrypt.hash(req.body.new, 10);
               User.updateOne(
@@ -460,7 +456,6 @@ app.get("/api/user/getFriendsRecommendation", (req, res) => {
         function (err, docs) {
           let result = docs.map(function (user) {
             let found = user.friends.find((element) => element._id == x._id);
-            //console.log(user);
             if (
               user.friends.find((element) => element._id == x._id) ===
                 undefined &&
@@ -488,7 +483,6 @@ let storage = multer.diskStorage({
     cb(null, "./uploads/profilepictures");
   },
   filename: function (req, file, cb) {
-    console.log(file);
     cb(null, file.originalname);
   },
 });
@@ -515,7 +509,6 @@ app.post(
           { _id: user._id },
           { $set: { profilepicture: user._id } },
           (err, docs) => {
-            console.log(docs);
             if (err) res.status(500).send({ errors: [err] });
             return;
           }
@@ -560,72 +553,71 @@ app.post("/api/user/unbanUser", (req, res) => {
       },
     },
     (err, docs) => {
-      console.log(docs);
       if (err) res.status(500).send({ errors: [err] });
     }
   );
   res.status(200).send("User unbanned!");
 });
 
-app.post("/api/user/sendResetPasswordCode", (req,res) => {
+app.post("/api/user/sendResetPasswordCode", (req, res) => {
   let email = req.body.email;
 
-  User.findOne({ email : email }, function (err, docs) {
-    if(docs){
+  User.findOne({ email: email }, function (err, docs) {
+    if (docs) {
       let code = Math.floor(100000 + Math.random() * 900000);
 
       let transporter = mailer.createTransport({
-        service : "gmail",
-        auth : {
-          user : process.env.EMAIL,
-          pass : process.env.PASSWORD,
-        }
-      })
+        service: "gmail",
+        auth: {
+          user: process.env.EMAIL,
+          pass: process.env.PASSWORD,
+        },
+      });
 
       let mailOptions = {
-        from : "ivanchristian.webrtc@gmail.com",
-        to : email,
-        subject : "Reset password verification code",
-        text : `You have requested to reset your password for your WebRTC Chat App account. Here is the verification code : ${code}`
-      }
+        from: "ivanchristian.webrtc@gmail.com",
+        to: email,
+        subject: "Reset password verification code",
+        text: `You have requested to reset your password for your WebRTC Chat App account. Here is the verification code : ${code}`,
+      };
 
       transporter.sendMail(mailOptions, (err, info) => {
-        if(err) throw err;
-      })
+        if (err) throw err;
+      });
 
-      res.status(200).send({code : code})
-    }else{
-      res.status(400).send("User not found")
+      res.status(200).send({ code: code });
+    } else {
+      res.status(400).send("User not found");
     }
   });
-})
+});
 
-app.post("/api/user/resetPassword",  (req,res)=>{
-  let password = req.body.password
-  let email = req.body.email
+app.post("/api/user/resetPassword", (req, res) => {
+  let password = req.body.password;
+  let email = req.body.email;
 
   User.findOne({ email: email }, async function (err, doc) {
     if (!err) {
       let hashedPass = await bcrypt.hash(password, 10);
-          User.updateOne(
-            { email : email },
-            { $set: { password: hashedPass } },
-            (err, docs) => {
-              if (err) {
-                res.status(500).send(err);
-                return;
-              } else {
-                res.status(200).send("Success");
-                return;
-              }
-            }
-          );
+      User.updateOne(
+        { email: email },
+        { $set: { password: hashedPass } },
+        (err, docs) => {
+          if (err) {
+            res.status(500).send(err);
+            return;
+          } else {
+            res.status(200).send("Success");
+            return;
+          }
+        }
+      );
     } else {
       res.status(401).send(err);
       return;
     }
   });
-})
+});
 
 app.post("/api/report/create", (req, res) => {
   if (req.body.token) {
@@ -688,7 +680,6 @@ app.post("/api/report/closeReport", (req, res) => {
       },
     },
     (err, docs) => {
-      console.log(docs);
       if (err) res.status(500).send({ errors: [err] });
       return;
     }
@@ -719,7 +710,7 @@ io.on("connection", (socket: Socket) => {
   if (userData) {
     if (!users[socket.id]) {
       users[socket.id] = userData;
-      console.log(userData.email + " connected!");
+      console.info(userData.email + " connected!");
     }
   }
 
@@ -728,13 +719,12 @@ io.on("connection", (socket: Socket) => {
   io.sockets.emit("allUsers", users);
 
   socket.on("disconnect", () => {
-    console.log(userData.email + " disconnected!");
+    console.info(userData.email + " disconnected!");
     delete users[socket.id];
     io.sockets.emit("allUsers", users);
   });
 
   socket.on("transferSDP", (data) => {
-    //console.log(data);
     let x = data;
     x.from = socket.id;
     io.to(data.to).emit("sdpTransfer", x);
@@ -753,7 +743,7 @@ io.on("connection", (socket: Socket) => {
     io.to(data.to).emit("meetingInvitation", {
       meetingID: data.meetingID,
       from: socket.id,
-      senderInfo : userData
+      senderInfo: userData,
     });
   });
 
@@ -765,7 +755,10 @@ io.on("connection", (socket: Socket) => {
 
       meetingRooms[data.meetingID].forEach((socketID) => {
         if (socket.id !== socketID)
-          io.to(socketID).emit("newMeetingMember", {sid : socketID, userData : userData});
+          io.to(socketID).emit("newMeetingMember", {
+            sid: socketID,
+            userData: userData,
+          });
       });
     }
   });
@@ -777,14 +770,12 @@ io.on("connection", (socket: Socket) => {
   });
 
   socket.on("requestMeetingMembers", (data) => {
-    console.log(data);
     socket.emit("meetingMembers", meetingRooms[data]);
   });
 
   socket.on("transferSDPMeeting", (data) => {
     let x = data;
     x.from = socket.id;
-    console.log(x);
     io.to(data.to).emit("meetingSDPTransfer", x);
   });
 
@@ -805,7 +796,7 @@ io.on("connection", (socket: Socket) => {
 });
 
 server.listen(process.env.PORT, () => {
-  console.log("Backend running at port 3001");
+  console.info("Backend running at port 3001");
 });
 
 module.exports = app;
