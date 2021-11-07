@@ -50,6 +50,7 @@ var decodeToken = require("./library/decodeToken");
 var _ = require("underscore");
 var MBTIComp = require("./library/compability.json");
 var multer = require("multer");
+var mailer = require("nodemailer");
 var User = require("./models/userModel.ts");
 var Report = require("./models/report/chatReportModel");
 var app = express();
@@ -75,7 +76,7 @@ mongoose.connect(process.env.DATABASE_URI, {
 var db = mongoose.connection;
 db.on("error", console.error.bind(console, "connection error:"));
 db.once("open", function () {
-    console.log("DB successfully connected!");
+    console.info("DB successfully connected!");
 });
 app.post("/api/user/register", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var email, password, confirm, name, username, newUser, _a;
@@ -99,8 +100,6 @@ app.post("/api/user/register", function (req, res) { return __awaiter(void 0, vo
                         _b.email = email,
                         _b.username = username,
                         _b.profilepicture = "default",
-                        _b.isBanned = true,
-                        _b.bannedDate = null,
                         _b)]))();
                 newUser.save(function (err, u) {
                     if (err)
@@ -128,7 +127,7 @@ app.post("/api/user/login", function (req, res) { return __awaiter(void 0, void 
             if (doc != null) {
                 bcrypt.compare(password, doc.password, function (err, result) {
                     if (err)
-                        return console.log(err);
+                        return console.error(err);
                     if (result) {
                         var userData = {};
                         userData["_id"] = doc._id;
@@ -139,12 +138,12 @@ app.post("/api/user/login", function (req, res) { return __awaiter(void 0, void 
                         userData["bio"] = doc.bio;
                         userData["profilepicture"] = doc.profilepicture;
                         var token = require("./library/generateToken.ts")(userData);
-                        res.cookie("token", token, {
-                            secure: true,
-                            sameSite: false,
-                            httpOnly: false,
-                            domain: process.env.FRONTEND_URI
-                        });
+                        if (doc.isBanned) {
+                            res.status(403).send({
+                                errors: ["You are banned from this site"]
+                            });
+                            return;
+                        }
                         res.status(200).send({
                             user: userData,
                             token: token
@@ -198,9 +197,7 @@ app.post("/api/user/addFriend", function (req, res) { return __awaiter(void 0, v
                             username: user_1.username,
                             profilepicture: user_1.profilepicture
                         };
-                        User.updateOne({ _id: target_1._id }, { $addToSet: { pendings: userData } }, function (err, result) {
-                            console.log(result);
-                        });
+                        User.updateOne({ _id: target_1._id }, { $addToSet: { pendings: userData } }, function (err, result) { });
                         res.status(200).send("Success");
                     }
                     else {
@@ -224,7 +221,7 @@ app.get("/api/user/getPendingFriends", function (req, res) {
         if (user) {
             User.findOne({ _id: user._id }, "pendings", function (err, docs) {
                 if (err) {
-                    console.log(err);
+                    console.error(err);
                     res.status(500).send({ errors: err });
                 }
                 res.status(200).send(docs);
@@ -244,7 +241,7 @@ app.get("/api/user/getFriends", function (req, res) {
         if (user) {
             User.findOne({ _id: user._id }, "friends", function (err, docs) {
                 if (err) {
-                    console.log(err);
+                    console.error(err);
                     res.status(500).send({ errors: err });
                 }
                 res.status(200).send(docs);
@@ -264,7 +261,7 @@ app.get("/api/user/getBlocks", function (req, res) {
         if (user) {
             User.findOne({ _id: user._id }, "blocks", function (err, docs) {
                 if (err) {
-                    console.log(err);
+                    console.error(err);
                     res.status(500).send({ errors: err });
                 }
                 res.status(200).send(docs);
@@ -279,7 +276,7 @@ app.get("/api/user/getBlocks", function (req, res) {
     }
 });
 app.post("/api/user/acceptFriendRequest", function (req, res) {
-    if (req.query.token) {
+    if (req.body.token) {
         var user = decodeToken(req.body.token);
         var target = req.body.target;
         if (user) {
@@ -370,7 +367,6 @@ app.post("/api/user/updateProfile", function (req, res) {
     if (req.body.token) {
         var user = decodeToken(req.body.token);
         if (user) {
-            console.log(req.body);
             var userData = {
                 _id: user._id,
                 name: user.name,
@@ -378,7 +374,6 @@ app.post("/api/user/updateProfile", function (req, res) {
                 username: user.username
             };
             User.updateOne({ _id: user._id }, { $set: { name: req.body.name, bio: req.body.bio } }, function (err, docs) {
-                console.log(docs);
                 if (err)
                     res.status(500).send({ errors: [err] });
                 return;
@@ -427,7 +422,7 @@ app.post("/api/user/changePassword", function (req, res) {
                             switch (_a.label) {
                                 case 0:
                                     if (err)
-                                        return [2 /*return*/, console.log(err)];
+                                        return [2 /*return*/, console.error(err)];
                                     if (!result) return [3 /*break*/, 2];
                                     return [4 /*yield*/, bcrypt.hash(req.body["new"], 10)];
                                 case 1:
@@ -481,7 +476,6 @@ app.get("/api/user/getFriendsRecommendation", function (req, res) {
             }, function (err, docs) {
                 var result = docs.map(function (user) {
                     var found = user.friends.find(function (element) { return element._id == x_1._id; });
-                    //console.log(user);
                     if (user.friends.find(function (element) { return element._id == x_1._id; }) ===
                         undefined &&
                         user.pendings.find(function (element) { return element._id == x_1._id; }) ===
@@ -506,7 +500,6 @@ var storage = multer.diskStorage({
         cb(null, "./uploads/profilepictures");
     },
     filename: function (req, file, cb) {
-        console.log(file);
         cb(null, file.originalname);
     }
 });
@@ -524,7 +517,6 @@ app.post("/api/user/uploadProfilePicture", upload.single("file" /* name attribut
                 username: user.username
             };
             User.updateOne({ _id: user._id }, { $set: { profilepicture: user._id } }, function (err, docs) {
-                console.log(docs);
                 if (err)
                     res.status(500).send({ errors: [err] });
                 return;
@@ -571,15 +563,72 @@ app.post("/api/user/unbanUser", function (req, res) {
             isBanned: false
         }
     }, function (err, docs) {
-        console.log(docs);
         if (err)
             res.status(500).send({ errors: [err] });
     });
     res.status(200).send("User unbanned!");
 });
-app.get("/testCookie", function (req, res) {
-    console.log(req.body.token);
-    console.log(decodeToken(req.body.token));
+app.post("/api/user/sendResetPasswordCode", function (req, res) {
+    var email = req.body.email;
+    User.findOne({ email: email }, function (err, docs) {
+        if (docs) {
+            var code = Math.floor(100000 + Math.random() * 900000);
+            var transporter = mailer.createTransport({
+                service: "gmail",
+                auth: {
+                    user: process.env.EMAIL,
+                    pass: process.env.PASSWORD
+                }
+            });
+            var mailOptions = {
+                from: "ivanchristian.webrtc@gmail.com",
+                to: email,
+                subject: "Reset password verification code",
+                text: "You have requested to reset your password for your WebRTC Chat App account. Here is the verification code : " + code
+            };
+            transporter.sendMail(mailOptions, function (err, info) {
+                if (err)
+                    throw err;
+            });
+            res.status(200).send({ code: code });
+        }
+        else {
+            res.status(400).send("User not found");
+        }
+    });
+});
+app.post("/api/user/resetPassword", function (req, res) {
+    var password = req.body.password;
+    var email = req.body.email;
+    User.findOne({ email: email }, function (err, doc) {
+        return __awaiter(this, void 0, void 0, function () {
+            var hashedPass;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        if (!!err) return [3 /*break*/, 2];
+                        return [4 /*yield*/, bcrypt.hash(password, 10)];
+                    case 1:
+                        hashedPass = _a.sent();
+                        User.updateOne({ email: email }, { $set: { password: hashedPass } }, function (err, docs) {
+                            if (err) {
+                                res.status(500).send(err);
+                                return;
+                            }
+                            else {
+                                res.status(200).send("Success");
+                                return;
+                            }
+                        });
+                        return [3 /*break*/, 3];
+                    case 2:
+                        res.status(401).send(err);
+                        return [2 /*return*/];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
+    });
 });
 app.post("/api/report/create", function (req, res) {
     if (req.body.token) {
@@ -642,7 +691,6 @@ app.post("/api/report/closeReport", function (req, res) {
             isReporteeBanned: req.body.banReportee
         }
     }, function (err, docs) {
-        console.log(docs);
         if (err)
             res.status(500).send({ errors: [err] });
         return;
@@ -666,18 +714,17 @@ io.on("connection", function (socket) {
     if (userData) {
         if (!users[socket.id]) {
             users[socket.id] = userData;
-            console.log(userData.email + " connected!");
+            console.info(userData.email + " connected!");
         }
     }
     socket.emit("yourID", socket.id);
     io.sockets.emit("allUsers", users);
     socket.on("disconnect", function () {
-        console.log(userData.email + " disconnected!");
+        console.info(userData.email + " disconnected!");
         delete users[socket.id];
         io.sockets.emit("allUsers", users);
     });
     socket.on("transferSDP", function (data) {
-        //console.log(data);
         var x = data;
         x.from = socket.id;
         io.to(data.to).emit("sdpTransfer", x);
@@ -692,7 +739,8 @@ io.on("connection", function (socket) {
     socket.on("inviteUserToMeeting", function (data) {
         io.to(data.to).emit("meetingInvitation", {
             meetingID: data.meetingID,
-            from: socket.id
+            from: socket.id,
+            senderInfo: userData
         });
     });
     socket.on("respondMeetingInvitation", function (data) {
@@ -701,7 +749,10 @@ io.on("connection", function (socket) {
             meetingRooms[data.meetingID].push(socket.id);
             meetingRooms[data.meetingID].forEach(function (socketID) {
                 if (socket.id !== socketID)
-                    io.to(socketID).emit("newMeetingMember", socket.id);
+                    io.to(socketID).emit("newMeetingMember", {
+                        sid: socketID,
+                        userData: userData
+                    });
             });
         }
     });
@@ -711,13 +762,11 @@ io.on("connection", function (socket) {
         socket.emit("meetingID", meetingID);
     });
     socket.on("requestMeetingMembers", function (data) {
-        console.log(data);
         socket.emit("meetingMembers", meetingRooms[data]);
     });
     socket.on("transferSDPMeeting", function (data) {
         var x = data;
         x.from = socket.id;
-        console.log(x);
         io.to(data.to).emit("meetingSDPTransfer", x);
     });
     socket.on("leaveMeeting", function (_a) {
@@ -736,6 +785,6 @@ io.on("connection", function (socket) {
     });
 });
 server.listen(process.env.PORT, function () {
-    console.log("Backend running at port 3001");
+    console.info("Backend running at port 3001");
 });
 module.exports = app;

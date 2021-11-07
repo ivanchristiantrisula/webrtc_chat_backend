@@ -35,8 +35,8 @@ const corsConfig = {
 app.use(cors(corsConfig));
 app.use(cookieParser());
 
-//app.use("/api/user/", userRouter);
-//app.use("/api/report/", reportRouter);
+//app.use("/user/", userRouter);
+//app.use("/report/", reportRouter);
 
 mongoose.connect(process.env.DATABASE_URI, {
   useNewUrlParser: true,
@@ -49,7 +49,7 @@ db.once("open", function () {
   console.info("DB successfully connected!");
 });
 
-app.post("/api/user/register", async (req, res) => {
+app.post("/user/register", async (req, res) => {
   let email = req.body.email;
   let password = req.body.password;
   let confirm = req.body.confirm;
@@ -75,7 +75,7 @@ app.post("/api/user/register", async (req, res) => {
   }
 });
 
-app.post("/api/user/login", async (req, res) => {
+app.post("/user/login", async (req, res) => {
   let email = req.body.email;
   let password = req.body.password;
 
@@ -115,7 +115,7 @@ app.post("/api/user/login", async (req, res) => {
   });
 });
 
-app.get("/api/user/findUser", async (req, res) => {
+app.get("/user/findUser", async (req, res) => {
   let keyword = req.query.keyword;
 
   User.findOne(
@@ -130,7 +130,7 @@ app.get("/api/user/findUser", async (req, res) => {
   );
 });
 
-app.post("/api/user/addFriend", async (req, res) => {
+app.post("/user/addFriend", async (req, res) => {
   if (req.body.token) {
     let user = decodeToken(req.body.token);
     let target = req.body.user;
@@ -170,7 +170,7 @@ app.post("/api/user/addFriend", async (req, res) => {
   }
 });
 
-app.get("/api/user/getPendingFriends", (req, res) => {
+app.get("/user/getPendingFriends", (req, res) => {
   if (req.query.token) {
     let user = decodeToken(req.query.token);
     if (user) {
@@ -190,7 +190,7 @@ app.get("/api/user/getPendingFriends", (req, res) => {
   }
 });
 
-app.get("/api/user/getFriends", (req, res) => {
+app.get("/user/getFriends", (req, res) => {
   if (req.query.token) {
     let user = decodeToken(req.query.token);
     if (user) {
@@ -210,7 +210,7 @@ app.get("/api/user/getFriends", (req, res) => {
   }
 });
 
-app.get("/api/user/getBlocks", (req, res) => {
+app.get("/user/getBlocks", (req, res) => {
   if (req.query.token) {
     let user = decodeToken(req.query.token);
     if (user) {
@@ -230,7 +230,7 @@ app.get("/api/user/getBlocks", (req, res) => {
   }
 });
 
-app.post("/api/user/acceptFriendRequest", (req, res) => {
+app.post("/user/acceptFriendRequest", (req, res) => {
   if (req.body.token) {
     let user = decodeToken(req.body.token);
     let target = req.body.target;
@@ -279,7 +279,7 @@ app.post("/api/user/acceptFriendRequest", (req, res) => {
   }
 });
 
-app.post("/api/user/rejectFriendRequest", (req, res) => {
+app.post("/user/rejectFriendRequest", (req, res) => {
   if (req.body.token) {
     let user = decodeToken(req.body.token);
     let target = req.body.target;
@@ -310,7 +310,7 @@ app.post("/api/user/rejectFriendRequest", (req, res) => {
   }
 });
 
-app.post("/api/user/updateMBTI", (req, res) => {
+app.post("/user/updateMBTI", (req, res) => {
   if (req.body.token) {
     let user = decodeToken(req.body.token);
 
@@ -340,7 +340,7 @@ app.post("/api/user/updateMBTI", (req, res) => {
   }
 });
 
-app.post("/api/user/updateProfile", (req, res) => {
+app.post("/user/updateProfile", (req, res) => {
   if (req.body.token) {
     let user = decodeToken(req.body.token);
 
@@ -383,7 +383,7 @@ app.post("/api/user/updateProfile", (req, res) => {
   }
 });
 
-app.post("/api/user/changePassword", (req, res) => {
+app.post("/user/changePassword", (req, res) => {
   if (req.body.token) {
     let user = decodeToken(req.body.token);
 
@@ -437,7 +437,7 @@ app.post("/api/user/changePassword", (req, res) => {
   }
 });
 
-app.get("/api/user/getFriendsRecommendation", (req, res) => {
+app.get("/user/getFriendsRecommendation", (req, res) => {
   if (req.query.token) {
     let user = decodeToken(req.query.token);
 
@@ -491,7 +491,7 @@ const upload = multer({
 });
 
 app.post(
-  "/api/user/uploadProfilePicture",
+  "/user/uploadProfilePicture",
   upload.single("file" /* name attribute of <file> element in your form */),
   (req, res, next) => {
     if (req.body.token) {
@@ -526,7 +526,7 @@ app.post(
   }
 );
 
-app.get("/api/user/getBannedUsers", async (req, res) => {
+app.get("/user/getBannedUsers", async (req, res) => {
   let users = await User.aggregate([
     {
       $lookup: {
@@ -542,7 +542,7 @@ app.get("/api/user/getBannedUsers", async (req, res) => {
   res.status(200).send(users);
 });
 
-app.post("/api/user/unbanUser", (req, res) => {
+app.post("/user/unbanUser", (req, res) => {
   User.updateOne(
     { _id: req.body.userID },
     {
@@ -559,7 +559,7 @@ app.post("/api/user/unbanUser", (req, res) => {
   res.status(200).send("User unbanned!");
 });
 
-app.post("/api/user/sendResetPasswordCode", (req, res) => {
+app.post("/user/sendResetPasswordCode", (req, res) => {
   let email = req.body.email;
 
   User.findOne({ email: email }, function (err, docs) {
@@ -592,7 +592,7 @@ app.post("/api/user/sendResetPasswordCode", (req, res) => {
   });
 });
 
-app.post("/api/user/resetPassword", (req, res) => {
+app.post("/user/resetPassword", (req, res) => {
   let password = req.body.password;
   let email = req.body.email;
 
@@ -619,7 +619,7 @@ app.post("/api/user/resetPassword", (req, res) => {
   });
 });
 
-app.post("/api/report/create", (req, res) => {
+app.post("/report/create", (req, res) => {
   if (req.body.token) {
     let user = decodeToken(req.body.token);
 
@@ -647,13 +647,13 @@ app.post("/api/report/create", (req, res) => {
   }
 });
 
-app.get("/api/report/getAllReports", async (req, res) => {
+app.get("/report/getAllReports", async (req, res) => {
   let reports = await Report.find({});
 
   res.status(200).send(reports);
 });
 
-app.post("/api/report/closeReport", (req, res) => {
+app.post("/report/closeReport", (req, res) => {
   if (req.body.banReportee) {
     User.updateOne(
       { _id: req.body.reporteeID },
