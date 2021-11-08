@@ -57,12 +57,14 @@ app.post("/user/register", async (req, res) => {
   let username = req.body.username;
 
   if (password === confirm) {
+    let code = Math.floor(100000 + Math.random() * 900000);
     let newUser = new User({
       name: name,
       password: await bcrypt.hash(password, 10),
       email: email,
       username: username,
       profilepicture: "default",
+      isVerified: false,
     });
     newUser.save(function (err, u) {
       if (err) return res.status(400).send({ errors: [err.message] });
@@ -72,6 +74,60 @@ app.post("/user/register", async (req, res) => {
     res.status(400).send({
       errors: ["Confirm Password doesn't match Password"],
     });
+  }
+});
+
+app.post("/user/sendEmailVerificationCode", async (req, res) => {
+  if (req.body.token) {
+    let user = decodeToken(req.body.token);
+
+    User.findOne({ _id: user._id }, function (err, docs) {
+      if (docs) {
+        let code = Math.floor(100000 + Math.random() * 900000);
+
+        let transporter = mailer.createTransport({
+          service: "gmail",
+          auth: {
+            user: process.env.EMAIL,
+            pass: process.env.PASSWORD,
+          },
+        });
+
+        let mailOptions = {
+          from: "ivanchristian.webrtc@gmail.com",
+          to: docs.email,
+          subject: "Email verification code",
+          text: `You have registered this email address to WebRTC Chat service. Here is your verification code : ${code}`,
+        };
+
+        transporter.sendMail(mailOptions, (err, info) => {
+          if (err) throw err;
+        });
+
+        res.status(200).send({ code: code });
+      } else {
+        res.status(400).send("User not found");
+      }
+    });
+  }
+});
+
+app.post("/user/verifyAccount", (req, res) => {
+  if (req.body.token) {
+    let user = decodeToken(req.body.token);
+    User.updateOne(
+      { _id: user._id },
+      { $set: { isVerified: true } },
+      (err, result) => {
+        if (err) {
+          res.status(500).send(err);
+        }
+
+        if (result) {
+          res.status(200).send("OK");
+        }
+      }
+    );
   }
 });
 
@@ -93,6 +149,7 @@ app.post("/user/login", async (req, res) => {
           userData["MBTI"] = doc.MBTI;
           userData["bio"] = doc.bio;
           userData["profilepicture"] = doc.profilepicture;
+          userData["isVerified"] = doc.isVerified;
           let token = require("./library/generateToken.ts")(userData);
 
           if (doc.isBanned) {
@@ -118,11 +175,12 @@ app.post("/user/login", async (req, res) => {
 app.get("/user/findUser", async (req, res) => {
   let keyword = req.query.keyword;
 
-  User.findOne(
-    { username: new RegExp("^" + keyword + "$", "i") },
+  User.find(
+    { username: { $regex: keyword, $options: "i" } },
     function (err, doc) {
+      console.log(doc);
       if (!err) {
-        res.status(200).send(new Array(doc));
+        res.status(200).send(doc);
       } else {
         res.status(401).send(err);
       }

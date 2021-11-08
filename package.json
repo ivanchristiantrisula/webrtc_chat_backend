@@ -45,6 +45,7 @@
     "underscore": "^1.13.1"
   },
   "devDependencies": {
+    "@types/node": "^16.11.6",
     "@types/simple-peer": "^9.6.3"
   }
 }

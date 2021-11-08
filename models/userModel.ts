@@ -64,6 +64,14 @@ const userSchema = new mongoose.Schema({
     type: ObjectId,
     required: false,
   },
+  chatHistory: {
+    type: String,
+    required: false,
+  },
+  isVerified: {
+    type: Boolean,
+    required: true,
+  },
 });
 
 userSchema.plugin(uniqueValidator, {
