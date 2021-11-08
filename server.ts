@@ -178,7 +178,6 @@ app.get("/user/findUser", async (req, res) => {
   User.find(
     { username: { $regex: keyword, $options: "i" } },
     function (err, doc) {
-      console.log(doc);
       if (!err) {
         res.status(200).send(doc);
       } else {
