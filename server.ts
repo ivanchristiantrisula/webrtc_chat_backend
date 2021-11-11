@@ -839,12 +839,12 @@ io.on("connection", (socket: Socket) => {
   });
 
   socket.on("notifyScreenSharing", (data) => {
-    meetingRooms[data.roomID].forEach((sid) => {
-      io.to(sid).emit("screenshareMode", {
-        sid: socket.id,
-        status: data.status,
-      });
-    });
+    // meetingRooms[data.roomID].forEach((sid) => {
+    //   io.to(sid).emit("screenshareMode", {
+    //     sid: socket.id,
+    //     status: data.status,
+    //   });
+    // });
   });
 });
 
