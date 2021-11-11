@@ -496,29 +496,25 @@ app.post("/user/changePassword", (req, res) => {
 
 app.get("/user/getFriendsRecommendation", (req, res) => {
   if (req.query.token) {
-    let user = decodeToken(req.query.token);
+    let x = decodeToken(req.query.token);
 
-    if (user) {
-      let x;
-      User.findById(user._id, function (err, docs) {
-        x = docs;
-      });
+    if (x) {
       User.find(
         {
           $and: [
-            { MBTI: { $in: MBTIComp[user.MBTI] } },
-            { _id: { $nin: [new ObjectId(user._id)] } },
+            { MBTI: { $in: MBTIComp[x.MBTI] } },
+            { _id: { $nin: [new ObjectId(x._id)] } },
           ],
         },
         function (err, docs) {
           let result = docs.map(function (user) {
-            let found = user.friends.find((element) => element._id == x._id);
+            let found = user.friends.find((element) => {
+              return element._id == x._id;
+            });
             if (
-              user.friends.find((element) => element._id == x._id) ===
-                undefined &&
-              user.pendings.find((element) => element._id == x._id) ===
-                undefined &&
-              user.blocks.find((element) => element._id == x._id) === undefined
+              !user.friends.find((element) => element._id == x._id) &&
+              !user.pendings.find((element) => element._id == x._id) &&
+              !user.blocks.find((element) => element._id == x._id)
             ) {
               return user;
             }
