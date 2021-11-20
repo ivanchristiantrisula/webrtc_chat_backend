@@ -816,6 +816,23 @@ io.on("connection", (socket: Socket) => {
     }
   });
 
+  socket.on("joinByMeetingID", ({ meetingID }) => {
+    if (meetingRooms[meetingID] !== undefined) {
+      meetingRooms[meetingID].push(socket.id);
+
+      meetingRooms[meetingID].forEach((socketID) => {
+        if (socket.id !== socketID)
+          io.to(socketID).emit("newMeetingMember", {
+            sid: socketID,
+            userData: userData,
+          });
+      });
+      io.to(socket.id).emit("joinMeetingByIDApproved", { code: meetingID });
+    } else {
+      io.to(socket.id).emit("joinMeetingByIDDenied");
+    }
+  });
+
   socket.on("requestNewRoom", () => {
     let meetingID = randomstring.generate(5);
     meetingRooms[meetingID] = new Array(socket.id);
