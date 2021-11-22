@@ -29,7 +29,7 @@ app.use(express.urlencoded({ extended: true }));
 
 createConnection(SQLConfig)
   .then((connection) => {
-    console.log("SQL DB Connected")
+    console.log("SQL DB Connected");
     app.get("/", (req, res) => {
       res.status(200).send("Server is OK");
     });
@@ -397,27 +397,17 @@ createConnection(SQLConfig)
         let user = decodeToken(req.body.token);
 
         if (user) {
+          let result = await getConnection()
+            .createQueryBuilder()
+            .update(UserSQL)
+            .set({ MBTI: req.body.type })
+            .where("id = :id", { id: user.id })
+            .execute();
 
-          // User.updateOne(
-          //   { _id: user._id },
-          //   { $set: { MBTI: req.body.type } },
-          //   (err, docs) => {
-          //     if (err) res.status(500).send({ errors: [err] });
-          //     return;
-          //   }
-          // );
-
-          let result = 
-          await getConnection()
-          .createQueryBuilder().update(UserSQL)
-          .set({MBTI : req.body.type})
-          .where("id = :id",{id : user.id})
-          .execute()
-          
-          if(result.affected?.toString){
-            res.status(200).send("Success")
-          }else{
-            res.status(500).send("Internal Error")
+          if (result.affected?.toString) {
+            res.status(200).send("Success");
+          } else {
+            res.status(500).send("Internal Error");
           }
         } else {
           res.status(400).send({ errors: ["Invalid token. Try re-login?"] });
@@ -427,7 +417,7 @@ createConnection(SQLConfig)
       }
     });
 
-    app.post("/user/updateProfile", (req, res) => {
+    app.post("/user/updateProfile", async (req, res) => {
       if (req.body.token) {
         let user = decodeToken(req.body.token);
 
@@ -439,29 +429,20 @@ createConnection(SQLConfig)
             username: user.username,
           };
 
-          User.updateOne(
-            { _id: user._id },
-            { $set: { name: req.body.name, bio: req.body.bio } },
-            (err, docs) => {
-              if (err) res.status(500).send({ errors: [err] });
-              return;
-            }
-          );
+          let result = await getConnection()
+            .createQueryBuilder()
+            .update(UserSQL)
+            .set({ name: req.body.name, bio: req.body.bio })
+            .where("id = :id", { id: user.id })
+            .execute();
 
-          // let payload = {};
-          // payload["_id"] = doc._id;
-          // payload["name"] = doc.name;
-          // payload["email"] = doc.email;
-          // payload["username"] = doc.username;
-          // payload["MBTI"] = doc.MBTI;
-          // payload["bio"] = doc.bio;
-          // let token = require("../library/generateToken")(userData);
-
-          //res.cookie("token", token, { httpOnly: false });
-
-          res.status(200).send({
-            user: userData,
-          });
+          if (result.affected?.toString) {
+            res.status(200).send({
+              user: userData,
+            });
+          } else {
+            res.status(500).send("Internal DB Error");
+          }
         } else {
           res.status(400).send({ errors: ["Invalid token. Try re-login?"] });
         }
@@ -470,7 +451,7 @@ createConnection(SQLConfig)
       }
     });
 
-    app.post("/user/changePassword", (req, res) => {
+    app.put("/user/changePassword", async (req, res) => {
       if (req.body.token) {
         let user = decodeToken(req.body.token);
 
@@ -487,39 +468,45 @@ createConnection(SQLConfig)
             return;
           }
 
-          User.findOne({ _id: user._id }, function (err, doc) {
-            if (!err) {
-              bcrypt.compare(
-                req.body.old,
-                doc.password,
-                async (err, result) => {
-                  if (err) return console.error(err);
-                  if (result) {
-                    let hashedPass = await bcrypt.hash(req.body.new, 10);
-                    User.updateOne(
-                      { _id: user._id },
-                      { $set: { password: hashedPass } },
-                      (err, docs) => {
-                        if (err) {
-                          res.status(500).send({ errors: [err] });
-                          return;
-                        } else {
-                          res.status(200).send("Success");
-                          return;
-                        }
-                      }
-                    );
-                  } else {
-                    res.status(401).send("Old password doesn't match");
-                    return;
-                  }
+          let oldUser = await getConnection()
+            .createQueryBuilder()
+            .select(["user.password"])
+            .from(UserSQL, "user")
+            .where("id = :d", { id: user.id })
+            .getOne();
+
+          bcrypt.compare(
+            req.body.old,
+            oldUser?.password,
+            async (err, passCompareResult) => {
+              if (err) {
+                console.error(err);
+                return;
+              }
+
+              if (passCompareResult) {
+                let newHashedPassword = await bcrypt.hash(req.body.new, 10);
+
+                try {
+                  await getConnection()
+                    .createQueryBuilder()
+                    .update(UserSQL)
+                    .set({ password: newHashedPassword })
+                    .where("id = :id", { id: user.id })
+                    .execute();
+
+                  res.status(200).send("Success");
+                } catch (error) {
+                  console.error(error);
+                  res.status(500).send({ errors: error });
+                  return;
                 }
-              );
-            } else {
-              res.status(401).send(err);
-              return;
+              } else {
+                res.status(401).send("Old password doesn't match");
+                return;
+              }
             }
-          });
+          );
         } else {
           res.status(400).send({ errors: ["Invalid token. Try re-login?"] });
         }
@@ -614,96 +601,97 @@ createConnection(SQLConfig)
     );
 
     app.get("/user/getBannedUsers", async (req, res) => {
-      let users = await User.aggregate([
-        {
-          $lookup: {
-            from: "reports",
-            localField: "banReportID",
-            foreignField: "_id",
-            as: "report",
-          },
-        },
-        { $match: { isBanned: true } },
-      ]);
+      try {
+        let users = await getConnection()
+          .createQueryBuilder()
+          .select("user")
+          .from(UserSQL, "user")
+          .where("user.isBanned = true")
+          .getMany();
 
-      res.status(200).send(users);
+        res.status(200).send(users);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send("Internal DB Error");
+      }
     });
 
-    app.post("/user/unbanUser", (req, res) => {
-      User.updateOne(
-        { _id: req.body.userID },
-        {
-          $set: {
-            bannedDate: null,
-            banReportID: null,
-            isBanned: false,
-          },
-        },
-        (err, docs) => {
-          if (err) res.status(500).send({ errors: [err] });
-        }
-      );
-      res.status(200).send("User unbanned!");
+    app.post("/user/unbanUser", async (req, res) => {
+      try {
+        await getConnection()
+          .createQueryBuilder()
+          .update(UserSQL)
+          .set({ isBanned: false })
+          .where("user.id = :id", { id: req.body.userID })
+          .execute();
+
+        res.status(200).send("User unbanned!");
+      } catch (error) {
+        res.status(500).send("DB Error");
+      }
     });
 
-    app.post("/user/sendResetPasswordCode", (req, res) => {
+    app.post("/user/sendResetPasswordCode", async (req, res) => {
       let email = req.body.email;
 
-      User.findOne({ email: email }, function (err, docs) {
-        if (docs) {
-          let code = Math.floor(100000 + Math.random() * 900000);
+      let user = await getConnection()
+        .createQueryBuilder()
+        .select("user")
+        .from(UserSQL, "user")
+        .where("user.email = :email", { email: email })
+        .getOne();
 
-          let transporter = mailer.createTransport({
-            service: "gmail",
-            auth: {
-              user: process.env.EMAIL,
-              pass: process.env.PASSWORD,
-            },
-          });
-
-          let mailOptions = {
-            from: "ivanchristian.webrtc@gmail.com",
-            to: email,
-            subject: "Reset password verification code",
-            text: `You have requested to reset your password for your WebRTC Chat App account. Here is the verification code : ${code}`,
-          };
-
-          transporter.sendMail(mailOptions, (err, info) => {
-            if (err) throw err;
-          });
-
-          res.status(200).send({ code: code });
-        } else {
-          res.status(400).send("User not found");
-        }
-      });
+      if (user !== undefined) {
+        let code = Math.floor(100000 + Math.random() * 900000);
+        let transporter = mailer.createTransport({
+          service: "gmail",
+          auth: {
+            user: process.env.EMAIL,
+            pass: process.env.PASSWORD,
+          },
+        });
+        let mailOptions = {
+          from: "ivanchristian.webrtc@gmail.com",
+          to: email,
+          subject: "Reset password verification code",
+          text: `You have requested to reset your password for your WebRTC Chat App account. Here is the verification code : ${code}`,
+        };
+        transporter.sendMail(mailOptions, (err, info) => {
+          if (err) throw err;
+        });
+        res.status(200).send({ code: code });
+      } else {
+        res.status(400).send("User not found");
+      }
     });
 
-    app.post("/user/resetPassword", (req, res) => {
+    app.post("/user/resetPassword", async (req, res) => {
       let password = req.body.password;
       let email = req.body.email;
 
-      User.findOne({ email: email }, async function (err, doc) {
-        if (!err) {
-          let hashedPass = await bcrypt.hash(password, 10);
-          User.updateOne(
-            { email: email },
-            { $set: { password: hashedPass } },
-            (err, docs) => {
-              if (err) {
-                res.status(500).send(err);
-                return;
-              } else {
-                res.status(200).send("Success");
-                return;
-              }
-            }
-          );
-        } else {
-          res.status(401).send(err);
-          return;
+      let user = await getConnection()
+        .createQueryBuilder()
+        .select("user")
+        .from(UserSQL, "user")
+        .where("user.email = :email", { email: email })
+        .getOne();
+
+      if (user !== undefined) {
+        let hashedPass = await bcrypt.hash(password, 10);
+        try {
+          await getConnection()
+            .createQueryBuilder()
+            .update(UserSQL)
+            .set({ password: hashedPass })
+            .where("email = :email", { email: email })
+            .execute();
+
+          res.status(200).send("Success");
+        } catch (error) {
+          console.error(error);
+          res.status(500).send("DB error");
         }
-      });
+      }
     });
 
     app.post("/report/create", (req, res) => {
