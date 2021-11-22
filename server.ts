@@ -17,7 +17,7 @@ const mailer = require("nodemailer");
 import "reflect-metadata";
 import SQLConfig from "./db/ormconfig";
 import UserSQL from "./models/SQL/entity/User.entity";
-import { createConnection } from "typeorm";
+import { createConnection, getConnection } from "typeorm";
 
 let User = require("./models/userModel.ts");
 let Report = require("./models/report/chatReportModel");
@@ -44,16 +44,16 @@ createConnection(SQLConfig)
     //app.use("/user/", userRouter);
     //app.use("/report/", reportRouter);
 
-    mongoose.connect(process.env.DATABASE_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    // mongoose.connect(process.env.DATABASE_URI, {
+    //   useNewUrlParser: true,
+    //   useUnifiedTopology: true,
+    // });
 
-    const db = mongoose.connection;
-    db.on("error", console.error.bind(console, "connection error:"));
-    db.once("open", function () {
-      console.info("DB successfully connected!");
-    });
+    // const db = mongoose.connection;
+    // db.on("error", console.error.bind(console, "connection error:"));
+    // db.once("open", function () {
+    //   console.info("DB successfully connected!");
+    // });
 
     app.post("/user/register", async (req, res) => {
       let email = req.body.email;
@@ -155,56 +155,105 @@ createConnection(SQLConfig)
       let email = req.body.email;
       let password = req.body.password;
 
-      User.findOne({ email: new RegExp(email, "i") }, function (err, doc) {
-        if (err) return res.status(400).send({ errors: err });
-        if (doc != null) {
-          bcrypt.compare(password, doc.password, (err, result) => {
-            if (err) return console.error(err);
-            if (result) {
-              let userData = {};
-              userData["_id"] = doc._id;
-              userData["name"] = doc.name;
-              userData["email"] = doc.email;
-              userData["username"] = doc.username;
-              userData["MBTI"] = doc.MBTI;
-              userData["bio"] = doc.bio;
-              userData["profilepicture"] = doc.profilepicture;
-              userData["isVerified"] = doc.isVerified;
-              let token = require("./library/generateToken.ts")(userData);
+      let user = await getConnection()
+        .createQueryBuilder()
+        .select("user")
+        .from(UserSQL, "user")
+        .where("user.email = :email", { email: email })
+        .getOne();
 
-              if (doc.isBanned) {
-                res.status(403).send({
-                  errors: ["You are banned from this site"],
-                });
-                return;
-              }
-              res.status(200).send({
-                user: userData,
-                token: token,
-              });
-            } else {
-              res.status(401).send({ errors: ["Wrong email or password"] });
-            }
+      if (user !== undefined) {
+        bcrypt.compare(password, user.password, (err, result) => {
+          if (err) console.error(err);
+          if (!result) {
+            res.status(401).send({ errors: ["Wrong password"] });
+            return;
+          }
+
+          if (user?.isBanned) {
+            res.status(403).send({
+              errors: ["You are banned from this site"],
+            });
+            return;
+          }
+
+          let token = require("./library/generateToken.ts")(user);
+
+          res.status(200).send({
+            user,
+            token: token,
           });
-        } else {
-          res.status(401).send({ errors: ["User not found!"] });
-        }
-      });
+        });
+      } else {
+        res.status(401).send({ errors: ["User not found!"] });
+      }
+
+      //console.log(user);
+
+      // User.findOne({ email: new RegExp(email, "i") }, function (err, doc) {
+      //   if (err) return res.status(400).send({ errors: err });
+      //   if (doc != null) {
+      //     bcrypt.compare(password, doc.password, (err, result) => {
+      //       if (err) return console.error(err);
+      //       if (result) {
+      //         let userData = {};
+      //         userData["_id"] = doc._id;
+      //         userData["name"] = doc.name;
+      //         userData["email"] = doc.email;
+      //         userData["username"] = doc.username;
+      //         userData["MBTI"] = doc.MBTI;
+      //         userData["bio"] = doc.bio;
+      //         userData["profilepicture"] = doc.profilepicture;
+      //         userData["isVerified"] = doc.isVerified;
+      //         let token = require("./library/generateToken.ts")(userData);
+
+      //         if (doc.isBanned) {
+      //           res.status(403).send({
+      //             errors: ["You are banned from this site"],
+      //           });
+      //           return;
+      //         }
+      //         res.status(200).send({
+      //           user: userData,
+      //           token: token,
+      //         });
+      //       } else {
+      //         res.status(401).send({ errors: ["Wrong email or password"] });
+      //       }
+      //     });
+      //   } else {
+      //     res.status(401).send({ errors: ["User not found!"] });
+      //   }
+      // });
     });
 
     app.get("/user/findUser", async (req, res) => {
       let keyword = req.query.keyword;
 
-      User.find(
-        { username: { $regex: keyword, $options: "i" } },
-        function (err, doc) {
-          if (!err) {
-            res.status(200).send(doc);
-          } else {
-            res.status(401).send(err);
-          }
-        }
-      );
+      // User.find(
+      //   { username: { $regex: keyword, $options: "i" } },
+      //   function (err, doc) {
+      //     if (!err) {
+      //       res.status(200).send(doc);
+      //     } else {
+      //       res.status(401).send(err);
+      //     }
+      //   }
+      // );
+      let users = await getConnection()
+        .createQueryBuilder()
+        .select("user")
+        .from(UserSQL, "user")
+        .where("user.username like '%' || :username || '%'", {
+          username: keyword,
+        })
+        .getMany();
+
+      if (users !== undefined) {
+        res.status(200).send(users);
+      } else {
+        res.status(500).send();
+      }
     });
 
     app.post("/user/addFriend", async (req, res) => {
