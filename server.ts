@@ -27,35 +27,20 @@ app.use(express.static(__dirname + "/uploads"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+const corsConfig = {
+  credentials: true,
+  origin: process.env.FRONTEND_URI,
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+};
+app.use(cors(corsConfig));
+app.use(cookieParser());
+
 createConnection(SQLConfig)
   .then((connection) => {
     console.log("SQL DB Connected");
     app.get("/", (req, res) => {
       res.status(200).send("Server is OK");
     });
-
-    const corsConfig = {
-      credentials: true,
-      origin: process.env.FRONTEND_URI,
-      methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-    };
-    app.use(cors(corsConfig));
-    app.use(cookieParser());
-
-    //app.use("/user/", userRouter);
-    //app.use("/report/", reportRouter);
-
-    // mongoose.connect(process.env.DATABASE_URI, {
-    //   useNewUrlParser: true,
-    //   useUnifiedTopology: true,
-    // });
-
-    // const db = mongoose.connection;
-    // db.on("error", console.error.bind(console, "connection error:"));
-    // db.once("open", function () {
-    //   console.info("DB successfully connected!");
-    // });
-
     app.post("/user/register", async (req, res) => {
       let email = req.body.email;
       let password = req.body.password;
@@ -102,53 +87,52 @@ createConnection(SQLConfig)
       if (req.body.token) {
         let user = decodeToken(req.body.token);
 
-        User.findOne({ _id: user._id }, function (err, docs) {
-          if (docs) {
-            let code = Math.floor(100000 + Math.random() * 900000);
+        if (user) {
+          let code = Math.floor(100000 + Math.random() * 900000);
 
-            let transporter = mailer.createTransport({
-              service: "gmail",
-              auth: {
-                user: process.env.EMAIL,
-                pass: process.env.PASSWORD,
-              },
-            });
+          let transporter = mailer.createTransport({
+            service: "gmail",
+            auth: {
+              user: process.env.EMAIL,
+              pass: process.env.PASSWORD,
+            },
+          });
 
-            let mailOptions = {
-              from: "ivanchristian.webrtc@gmail.com",
-              to: docs.email,
-              subject: "Email verification code",
-              text: `You have registered this email address to WebRTC Chat service. Here is your verification code : ${code}`,
-            };
+          let mailOptions = {
+            from: "ivanchristian.webrtc@gmail.com",
+            to: user.email,
+            subject: "Email verification code",
+            text: `You have registered this email address to WebRTC Chat service. Here is your verification code : ${code}`,
+          };
 
-            transporter.sendMail(mailOptions, (err, info) => {
-              if (err) throw err;
-            });
+          transporter.sendMail(mailOptions, (err, info) => {
+            if (err) throw err;
+          });
 
-            res.status(200).send({ code: code });
-          } else {
-            res.status(400).send("User not found");
-          }
-        });
+          res.status(200).send({ code: code });
+        } else {
+          res.status(400).send("Token not valid");
+        }
       }
     });
 
-    app.post("/user/verifyAccount", (req, res) => {
+    app.post("/user/verifyAccount", async (req, res) => {
       if (req.body.token) {
         let user = decodeToken(req.body.token);
-        User.updateOne(
-          { _id: user._id },
-          { $set: { isVerified: true } },
-          (err, result) => {
-            if (err) {
-              res.status(500).send(err);
-            }
 
-            if (result) {
-              res.status(200).send("OK");
-            }
+        if (user) {
+          try {
+            await getConnection()
+              .createQueryBuilder()
+              .update(UserSQL)
+              .set({ isVerified: true })
+              .where("id = :id", { id: user.id })
+              .execute();
+            res.status(200).send("OK");
+          } catch (error) {
+            res.status(500).send("DB error");
           }
-        );
+        }
       }
     });
 
