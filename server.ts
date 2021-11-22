@@ -29,6 +29,7 @@ app.use(express.urlencoded({ extended: true }));
 
 createConnection(SQLConfig)
   .then((connection) => {
+    console.log("SQL DB Connected")
     app.get("/", (req, res) => {
       res.status(200).send("Server is OK");
     });
@@ -187,59 +188,11 @@ createConnection(SQLConfig)
       } else {
         res.status(401).send({ errors: ["User not found!"] });
       }
-
-      //console.log(user);
-
-      // User.findOne({ email: new RegExp(email, "i") }, function (err, doc) {
-      //   if (err) return res.status(400).send({ errors: err });
-      //   if (doc != null) {
-      //     bcrypt.compare(password, doc.password, (err, result) => {
-      //       if (err) return console.error(err);
-      //       if (result) {
-      //         let userData = {};
-      //         userData["_id"] = doc._id;
-      //         userData["name"] = doc.name;
-      //         userData["email"] = doc.email;
-      //         userData["username"] = doc.username;
-      //         userData["MBTI"] = doc.MBTI;
-      //         userData["bio"] = doc.bio;
-      //         userData["profilepicture"] = doc.profilepicture;
-      //         userData["isVerified"] = doc.isVerified;
-      //         let token = require("./library/generateToken.ts")(userData);
-
-      //         if (doc.isBanned) {
-      //           res.status(403).send({
-      //             errors: ["You are banned from this site"],
-      //           });
-      //           return;
-      //         }
-      //         res.status(200).send({
-      //           user: userData,
-      //           token: token,
-      //         });
-      //       } else {
-      //         res.status(401).send({ errors: ["Wrong email or password"] });
-      //       }
-      //     });
-      //   } else {
-      //     res.status(401).send({ errors: ["User not found!"] });
-      //   }
-      // });
     });
 
     app.get("/user/findUser", async (req, res) => {
       let keyword = req.query.keyword;
 
-      // User.find(
-      //   { username: { $regex: keyword, $options: "i" } },
-      //   function (err, doc) {
-      //     if (!err) {
-      //       res.status(200).send(doc);
-      //     } else {
-      //       res.status(401).send(err);
-      //     }
-      //   }
-      // );
       let users = await getConnection()
         .createQueryBuilder()
         .select("user")
@@ -439,28 +392,33 @@ createConnection(SQLConfig)
       }
     });
 
-    app.post("/user/updateMBTI", (req, res) => {
+    app.put("/user/updateMBTI", async (req, res) => {
       if (req.body.token) {
         let user = decodeToken(req.body.token);
 
         if (user) {
-          let userData = {
-            _id: user._id,
-            name: user.name,
-            email: user.email,
-            username: user.username,
-          };
 
-          User.updateOne(
-            { _id: user._id },
-            { $set: { MBTI: req.body.type } },
-            (err, docs) => {
-              if (err) res.status(500).send({ errors: [err] });
-              return;
-            }
-          );
+          // User.updateOne(
+          //   { _id: user._id },
+          //   { $set: { MBTI: req.body.type } },
+          //   (err, docs) => {
+          //     if (err) res.status(500).send({ errors: [err] });
+          //     return;
+          //   }
+          // );
 
-          res.status(200).send("Success");
+          let result = 
+          await getConnection()
+          .createQueryBuilder().update(UserSQL)
+          .set({MBTI : req.body.type})
+          .where("id = :id",{id : user.id})
+          .execute()
+          
+          if(result.affected?.toString){
+            res.status(200).send("Success")
+          }else{
+            res.status(500).send("Internal Error")
+          }
         } else {
           res.status(400).send({ errors: ["Invalid token. Try re-login?"] });
         }
