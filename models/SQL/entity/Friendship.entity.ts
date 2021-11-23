@@ -13,11 +13,13 @@ export default class Friendship {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
-  user1: number;
+  @OneToOne(() => User)
+  @JoinColumn()
+  user1: User;
 
-  @Column()
-  user2: number;
+  @OneToOne(() => User)
+  @JoinColumn()
+  user2: User;
 
   @Column()
   status: string;

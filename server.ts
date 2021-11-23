@@ -78,7 +78,7 @@ createConnection(SQLConfig)
 
         if (user) {
           let code = Math.floor(100000 + Math.random() * 900000);
-
+          console.log(code);
           let transporter = mailer.createTransport({
             service: "gmail",
             auth: {
@@ -207,6 +207,7 @@ createConnection(SQLConfig)
               await connection.manager.save(newFriend);
               res.status(200).send("Success");
             } catch (error) {
+              console.error(error);
               res.status(500).send("DB error");
             }
           } else {
@@ -220,18 +221,18 @@ createConnection(SQLConfig)
       }
     });
 
-    app.get("/user/getPendingFriends", (req, res) => {
+    app.get("/user/getPendingFriends", async (req, res) => {
       if (req.query.token) {
         let user = decodeToken(req.query.token);
         if (user) {
-          User.findOne({ _id: user._id }, "pendings", (err, docs) => {
-            if (err) {
-              console.error(err);
-              res.status(500).send({ errors: err });
-            }
+          let pendings = await connection
+            .getRepository(FriendshipSQL)
+            .createQueryBuilder("friendship")
+            .leftJoinAndSelect("friendship.user2", "user")
+            .where("status = :status", { status: "PENDING" })
+            .getMany();
 
-            res.status(200).send(docs);
-          });
+          res.status(200).send(pendings);
         } else {
           res.status(400).send({ errors: ["Invalid token. Try re-login?"] });
         }
@@ -280,47 +281,25 @@ createConnection(SQLConfig)
       }
     });
 
-    app.post("/user/acceptFriendRequest", (req, res) => {
+    app.post("/user/acceptFriendRequest", async (req, res) => {
       if (req.body.token) {
         let user = decodeToken(req.body.token);
         let target = req.body.target;
 
         if (user) {
-          let userData = {
-            _id: user._id,
-            name: user.name,
-            email: user.email,
-            username: user.username,
-            profilepicture: user.profilepicture,
-          };
+          try {
+            await getConnection()
+              .createQueryBuilder()
+              .update(FriendshipSQL)
+              .set({ status: "FRIEND" })
+              .where("id = :id", { id: target })
+              .execute();
 
-          User.updateOne(
-            { _id: user._id },
-            { $pull: { pendings: { _id: target._id } } },
-            (err, docs) => {
-              if (err) res.status(500).send({ errors: [err] });
-              return;
-            }
-          );
-          User.updateOne(
-            { _id: target._id },
-            { $addToSet: { friends: userData } },
-            (err, result) => {
-              if (err) res.status(500).send({ errors: [err] });
-              return;
-            }
-          );
-
-          User.updateOne(
-            { _id: user._id },
-            { $addToSet: { friends: target } },
-            (err, result) => {
-              if (err) res.status(500).send({ errors: [err] });
-              return;
-            }
-          );
-
-          res.status(200).send("Success");
+            res.status(200).send("Success");
+          } catch (error) {
+            console.error(error);
+            res.status(500).send("DB error");
+          }
         } else {
           res.status(400).send({ errors: ["Invalid token. Try re-login?"] });
         }
@@ -329,29 +308,25 @@ createConnection(SQLConfig)
       }
     });
 
-    app.post("/user/rejectFriendRequest", (req, res) => {
+    app.post("/user/rejectFriendRequest", async (req, res) => {
       if (req.body.token) {
         let user = decodeToken(req.body.token);
         let target = req.body.target;
 
         if (user) {
-          let userData = {
-            _id: user._id,
-            name: user.name,
-            email: user.email,
-            username: user.username,
-          };
+          try {
+            await getConnection()
+              .createQueryBuilder()
+              .delete()
+              .from(FriendshipSQL)
+              .where("id = :id", { id: target })
+              .execute();
 
-          User.updateOne(
-            { _id: user._id },
-            { $pull: { pendings: { _id: target._id } } },
-            (err, docs) => {
-              if (err) res.status(500).send({ errors: [err] });
-              return;
-            }
-          );
-
-          res.status(200).send("Success");
+            res.status(200).send("Success");
+          } catch (error) {
+            console.error(error);
+            res.status(500).send("DB error");
+          }
         } else {
           res.status(400).send({ errors: ["Invalid token. Try re-login?"] });
         }
