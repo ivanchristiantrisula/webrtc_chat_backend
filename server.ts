@@ -17,6 +17,7 @@ const mailer = require("nodemailer");
 import "reflect-metadata";
 import SQLConfig from "./db/ormconfig";
 import UserSQL from "./models/SQL/entity/User.entity";
+import FriendshipSQL from "./models/SQL/entity/Friendship.entity";
 import { createConnection, getConnection } from "typeorm";
 
 let User = require("./models/userModel.ts");
@@ -49,18 +50,6 @@ createConnection(SQLConfig)
       let username = req.body.username;
 
       if (password === confirm) {
-        //  let newUser = new User({
-        //     name: name,
-        //     password: await bcrypt.hash(password, 10),
-        //     email: email,
-        //     username: username,
-        //     profilepicture: "default",
-        //     isVerified: false,
-        //   });
-        //   newUser.save(function (err, u) {
-        //     if (err) return res.status(400).send({ errors: [err.message] });
-        //     return res.status(200).send("OK");
-        //   });
         let User = new UserSQL();
         User.name = name;
         User.password = await bcrypt.hash(password, 10);
@@ -197,37 +186,32 @@ createConnection(SQLConfig)
       if (req.body.token) {
         let user = decodeToken(req.body.token);
         let target = req.body.user;
-        if (user) {
-          User.find(
-            [
-              { _id: target._id },
-              {
-                $nor: [
-                  { "friends._id": user._id },
-                  { "pendings._id": user._id },
-                ],
-              },
-            ],
-            (err, doc) => {
-              if (_.isEmpty(doc)) {
-                let userData = {
-                  _id: user._id,
-                  name: user.name,
-                  email: user.email,
-                  username: user.username,
-                  profilepicture: user.profilepicture,
-                };
-                User.updateOne(
-                  { _id: target._id },
-                  { $addToSet: { pendings: userData } },
-                  (err, result) => {}
-                );
-                res.status(200).send("Success");
-              } else {
-                res.status(401).send({ errors: "Already in friendlist" });
-              }
+        if (user && target) {
+          let findExistingRelationship = await getConnection()
+            .createQueryBuilder()
+            .select("friendship")
+            .from(FriendshipSQL, "friendship")
+            .where(
+              "(friendship.user1 = :user AND friendship.user2 = :target) OR (friendship.user1 = :target AND friendship.user2 = :user)",
+              { user: user.id, target: target.id }
+            )
+            .getOne();
+
+          if (findExistingRelationship === undefined) {
+            const newFriend = new FriendshipSQL();
+            newFriend.user1 = user.id;
+            newFriend.user2 = target.id;
+            newFriend.status = "PENDING";
+
+            try {
+              await connection.manager.save(newFriend);
+              res.status(200).send("Success");
+            } catch (error) {
+              res.status(500).send("DB error");
             }
-          );
+          } else {
+            res.status(400).send("Friendship exists");
+          }
         } else {
           res.status(401).send({ errors: "Invalide Token" });
         }
