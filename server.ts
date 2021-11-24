@@ -171,7 +171,7 @@ createConnection(SQLConfig)
         .createQueryBuilder()
         .select("user")
         .from(UserSQL, "user")
-        .where("user.username like '%' || :username || '%'", {
+        .where("LOWER(user.username) like LOWER('%' || :username || '%')", {
           username: keyword,
         })
         .getMany();
