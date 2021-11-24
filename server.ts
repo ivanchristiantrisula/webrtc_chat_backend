@@ -18,6 +18,7 @@ import "reflect-metadata";
 import SQLConfig from "./db/ormconfig";
 import UserSQL from "./models/SQL/entity/User.entity";
 import FriendshipSQL from "./models/SQL/entity/Friendship.entity";
+import ReportSQL from "./models/SQL/entity/Report.entity";
 import { createConnection, getConnection } from "typeorm";
 
 let User = require("./models/userModel.ts");
@@ -637,26 +638,28 @@ createConnection(SQLConfig)
       }
     });
 
-    app.post("/report/create", (req, res) => {
+    app.post("/report/create", async (req, res) => {
       if (req.body.token) {
         let user = decodeToken(req.body.token);
 
         if (user) {
-          let newReport = new Report({
-            reporter: req.body.reporter,
-            reportee: req.body.reportee,
-            type: req.body.proof ? "Chat" : "Profile",
-            category: req.body.category,
-            proof: req.body.proof || null,
-            description: req.body.description,
-            status: "Open",
-            timestamp: new Date(),
-          });
+          try {
+            const report = new ReportSQL();
+            report.reporter = req.body.reporter;
+            report.reportee = req.body.reportee;
+            report.type = req.body.proof ? "Chat" : "Profile";
+            report.category = req.body.category;
+            report.proof = JSON.stringify(req.body.proof) || "";
+            report.description = req.body.description;
+            report.status = "Open";
+            report.timestamp = new Date();
 
-          newReport.save(function (err, u) {
-            if (err) return res.status(500).send({ errors: [err.message] });
-            return res.status(200).send("OK");
-          });
+            await connection.manager.save(report);
+            res.status(200).send("OK");
+          } catch (error) {
+            console.error(error);
+            res.status(500).send("DB error");
+          }
         } else {
           res.status(400).send({ errors: ["Invalid token. Try re-login?"] });
         }
@@ -666,9 +669,18 @@ createConnection(SQLConfig)
     });
 
     app.get("/report/getAllReports", async (req, res) => {
-      let reports = await Report.find({});
+      try {
+        let reports = await getConnection()
+          .createQueryBuilder()
+          .select("report")
+          .from(ReportSQL, "report")
+          .getMany();
 
-      res.status(200).send(reports);
+        res.status(200).send(reports);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send("DB error");
+      }
     });
 
     app.post("/report/closeReport", (req, res) => {
