@@ -1,5 +1,6 @@
 import { Timestamp } from "mongodb";
-import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from "typeorm";
+import Friendship from "./Friendship.entity";
 
 @Entity()
 export default class User {
@@ -31,11 +32,14 @@ export default class User {
   banReportID: string;
 
   @Column({ nullable: true })
-  banDate: string; // TODO : CEK DI CODING MANUAL SET TIMESTAMP
+  banDate: Date; // TODO : CEK DI CODING MANUAL SET TIMESTAMP
 
   @Column({ default: true })
   isBanned: Boolean = false;
 
   @Column({ default: true })
   isVerified: Boolean = false;
+
+  @OneToMany(() => Friendship, (friendship) => friendship.user1)
+  friends: Friendship[];
 }

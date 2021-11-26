@@ -199,13 +199,19 @@ createConnection(SQLConfig)
             .getOne();
 
           if (findExistingRelationship === undefined) {
-            const newFriend = new FriendshipSQL();
-            newFriend.user1 = user.id;
-            newFriend.user2 = target.id;
-            newFriend.status = "PENDING";
+            const newFriend1 = new FriendshipSQL();
+            newFriend1.user1 = user.id;
+            newFriend1.user2 = target.id;
+            newFriend1.status = "PENDING";
+
+            const newFriend2 = new FriendshipSQL();
+            newFriend2.user1 = target.id;
+            newFriend2.user2 = user.id;
+            newFriend2.status = "PENDING";
 
             try {
-              await connection.manager.save(newFriend);
+              await connection.manager.save(newFriend1);
+              await connection.manager.save(newFriend2);
               res.status(200).send("Success");
             } catch (error) {
               console.error(error);
@@ -230,7 +236,10 @@ createConnection(SQLConfig)
             .getRepository(FriendshipSQL)
             .createQueryBuilder("friendship")
             .leftJoinAndSelect("friendship.user2", "user")
-            .where("status = :status", { status: "PENDING" })
+            .where("status = :status AND friendship.user1 = :user", {
+              status: "PENDING",
+              user: user.id,
+            })
             .getMany();
 
           res.status(200).send(pendings);
@@ -242,18 +251,33 @@ createConnection(SQLConfig)
       }
     });
 
-    app.get("/user/getFriends", (req, res) => {
+    app.get("/user/getFriends", async (req, res) => {
       if (req.query.token) {
         let user = decodeToken(req.query.token);
         if (user) {
-          User.findOne({ _id: user._id }, "friends", (err, docs) => {
-            if (err) {
-              console.error(err);
-              res.status(500).send({ errors: err });
-            }
-
-            res.status(200).send(docs);
-          });
+          let users = await getConnection()
+            .createQueryBuilder()
+            .select("user")
+            .from(UserSQL, "user")
+            .leftJoinAndSelect(
+              "user.friends",
+              "friends",
+              "friends.status = 'FRIEND'"
+            )
+            .leftJoinAndSelect("friends.user2", "user2")
+            .where("user.id = :id", { id: user.id })
+            .getMany();
+          console.log(user.id);
+          console.log(users);
+          res.status(200).send(users);
+          //res.status(200).send({});
+          // User.findOne({ _id: user._id }, "friends", (err, docs) => {
+          //   if (err) {
+          //     console.error(err);
+          //     res.status(500).send({ errors: err });
+          //   }
+          //   res.status(200).send(docs);
+          // });
         } else {
           res.status(400).send({ errors: ["Invalid token. Try re-login?"] });
         }
@@ -293,7 +317,10 @@ createConnection(SQLConfig)
               .createQueryBuilder()
               .update(FriendshipSQL)
               .set({ status: "FRIEND" })
-              .where("id = :id", { id: target })
+              .where(
+                "(user1 = :user1 AND user2 = :user2) OR (user1 = :user2 AND user2 = :user1)",
+                { user1: user.id, user2: target }
+              )
               .execute();
 
             res.status(200).send("Success");
@@ -320,7 +347,10 @@ createConnection(SQLConfig)
               .createQueryBuilder()
               .delete()
               .from(FriendshipSQL)
-              .where("id = :id", { id: target })
+              .where(
+                "(user1 = :user1 AND user2 = :user2) OR (user1 = :user2 AND user2 = :user1)",
+                { user1: user.id, user2: target }
+              )
               .execute();
 
             res.status(200).send("Success");
@@ -683,39 +713,69 @@ createConnection(SQLConfig)
       }
     });
 
-    app.post("/report/closeReport", (req, res) => {
+    app.post("/report/closeReport", async (req, res) => {
       if (req.body.banReportee) {
-        User.updateOne(
-          { _id: req.body.reporteeID },
-          {
-            $set: {
+        // User.updateOne(
+        //   { _id: req.body.reporteeID },
+        //   {
+        //     $set: {
+        //       isBanned: true,
+        //       bannedDate: new Date(),
+        //       banReportID: new ObjectID(req.body.reportID),
+        //     },
+        //   },
+        //   (err, docs) => {
+        //     if (err) res.status(500).send({ errors: [err] });
+        //     return;
+        //   }
+        // );
+        try {
+          await getConnection()
+            .createQueryBuilder()
+            .update(UserSQL)
+            .set({
               isBanned: true,
-              bannedDate: new Date(),
-              banReportID: new ObjectID(req.body.reportID),
-            },
-          },
-          (err, docs) => {
-            if (err) res.status(500).send({ errors: [err] });
-            return;
-          }
-        );
+              banDate: new Date(),
+              banReportID: req.body.reportID,
+            })
+            .where("id = :id", { id: req.body.reporteeID })
+            .execute();
+        } catch (error) {
+          res.send(500).send("DB error");
+          return;
+        }
       }
-      Report.updateOne(
-        { _id: req.body.reportID },
-        {
-          $set: {
+
+      try {
+        await getConnection()
+          .createQueryBuilder()
+          .update(ReportSQL)
+          .set({
             status: "Closed",
             closedDate: new Date(),
             isReporteeBanned: req.body.banReportee,
-          },
-        },
-        (err, docs) => {
-          if (err) res.status(500).send({ errors: [err] });
-          return;
-        }
-      );
+          })
+          .where("id = :id", { id: req.body.reportID })
+          .execute();
 
-      res.status(200).send("Success");
+        res.status(200).send("Success");
+      } catch (error) {
+        res.status(500).send("DB error");
+      }
+      // Report.updateOne(
+      //   { _id: req.body.reportID },
+      //   {
+      //     $set: {
+      //       status: "Closed",
+      //       closedDate: new Date(),
+      //       isReporteeBanned: req.body.banReportee,
+      //     },
+      //   },
+      //   (err, docs) => {
+      //     if (err) res.status(500).send({ errors: [err] });
+      //     return;
+      //   }
+      // );
     });
 
     const server = http.createServer(app);

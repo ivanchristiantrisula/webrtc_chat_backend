@@ -40,4 +40,7 @@ export default class Report {
 
   @Column({ nullable: true })
   closedDate: Date;
+
+  @Column()
+  isReporteeBanned: boolean;
 }

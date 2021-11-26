@@ -5,6 +5,8 @@ import {
   Column,
   OneToOne,
   JoinColumn,
+  ManyToMany,
+  ManyToOne,
 } from "typeorm";
 import User from "./User.entity";
 
@@ -13,11 +15,10 @@ export default class Friendship {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @OneToOne(() => User)
-  @JoinColumn()
+  @ManyToOne(() => User, (user) => user.id)
   user1: User;
 
-  @OneToOne(() => User)
+  @ManyToOne(() => User, (user) => user.id)
   @JoinColumn()
   user2: User;
 
