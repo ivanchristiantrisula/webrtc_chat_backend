@@ -19,7 +19,7 @@ import SQLConfig from "./db/ormconfig";
 import UserSQL from "./models/SQL/entity/User.entity";
 import FriendshipSQL from "./models/SQL/entity/Friendship.entity";
 import ReportSQL from "./models/SQL/entity/Report.entity";
-import { createConnection, getConnection } from "typeorm";
+import { createConnection, getConnection, getRepository } from "typeorm";
 
 let User = require("./models/userModel.ts");
 let Report = require("./models/report/chatReportModel");
@@ -255,10 +255,8 @@ createConnection(SQLConfig)
       if (req.query.token) {
         let user = decodeToken(req.query.token);
         if (user) {
-          let users = await getConnection()
-            .createQueryBuilder()
-            .select("user")
-            .from(UserSQL, "user")
+          let users = await getRepository(UserSQL)
+            .createQueryBuilder("user")
             .leftJoinAndSelect(
               "user.friends",
               "friends",
@@ -266,10 +264,8 @@ createConnection(SQLConfig)
             )
             .leftJoinAndSelect("friends.user2", "user2")
             .where("user.id = :id", { id: user.id })
-            .getMany();
-          console.log(user.id);
-          console.log(users);
-          res.status(200).send(users);
+            .getOne();
+          res.status(200).send(users?.friends);
           //res.status(200).send({});
           // User.findOne({ _id: user._id }, "friends", (err, docs) => {
           //   if (err) {
