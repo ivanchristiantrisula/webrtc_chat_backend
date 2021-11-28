@@ -81,15 +81,20 @@ createConnection(SQLConfig)
           let code = Math.floor(100000 + Math.random() * 900000);
           console.log(code);
           let transporter = mailer.createTransport({
-            service: "gmail",
+            host: "mail.ivanchristian.me",
+            port: 587,
+            secure: false,
             auth: {
               user: process.env.EMAIL,
               pass: process.env.PASSWORD,
             },
+            tls: {
+              rejectUnauthorized: false,
+            },
           });
 
           let mailOptions = {
-            from: "ivanchristian.webrtc@gmail.com",
+            from: process.env.EMAIL,
             to: user.email,
             subject: "Email verification code",
             text: `You have registered this email address to WebRTC Chat service. Here is your verification code : ${code}`,
@@ -614,14 +619,19 @@ createConnection(SQLConfig)
       if (user !== undefined) {
         let code = Math.floor(100000 + Math.random() * 900000);
         let transporter = mailer.createTransport({
-          service: "gmail",
+          host: "mail.ivanchristian.me",
+          port: 587,
+          secure: false,
           auth: {
             user: process.env.EMAIL,
             pass: process.env.PASSWORD,
           },
+          tls: {
+            rejectUnauthorized: false,
+          },
         });
         let mailOptions = {
-          from: "ivanchristian.webrtc@gmail.com",
+          from: process.env.EMAIL,
           to: email,
           subject: "Reset password verification code",
           text: `You have requested to reset your password for your WebRTC Chat App account. Here is the verification code : ${code}`,
