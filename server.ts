@@ -81,7 +81,7 @@ createConnection(SQLConfig)
           let code = Math.floor(100000 + Math.random() * 900000);
           console.log(code);
           let transporter = mailer.createTransport({
-            host: "mail.ivanchristian.me",
+            host: "smtp.zoho.com",
             port: 587,
             secure: false,
             auth: {
