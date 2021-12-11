@@ -47,7 +47,7 @@ app.get("/getAllReports", async (req, res) => {
 app.post("/closeReport", (req, res) => {
   if (req.body.banReportee) {
     User.updateOne(
-      { _id: req.body.reporteeID },
+      { id: req.body.reporteeID },
       {
         $set: {
           isBanned: true,
@@ -62,7 +62,7 @@ app.post("/closeReport", (req, res) => {
     );
   }
   Report.updateOne(
-    { _id: req.body.reportID },
+    { id: req.body.reportID },
     {
       $set: {
         status: "Closed",

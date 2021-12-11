@@ -272,7 +272,7 @@ createConnection(SQLConfig)
             .getOne();
           res.status(200).send(users?.friends);
           //res.status(200).send({});
-          // User.findOne({ _id: user._id }, "friends", (err, docs) => {
+          // User.findOne({ id: user.id }, "friends", (err, docs) => {
           //   if (err) {
           //     console.error(err);
           //     res.status(500).send({ errors: err });
@@ -291,7 +291,7 @@ createConnection(SQLConfig)
       if (req.query.token) {
         let user = decodeToken(req.query.token);
         if (user) {
-          User.findOne({ _id: user._id }, "blocks", (err, docs) => {
+          User.findOne({ id: user.id }, "blocks", (err, docs) => {
             if (err) {
               console.error(err);
               res.status(500).send({ errors: err });
@@ -398,7 +398,7 @@ createConnection(SQLConfig)
 
         if (user) {
           let userData = {
-            _id: user._id,
+            id: user.id,
             name: user.name,
             email: user.email,
             username: user.username,
@@ -432,7 +432,7 @@ createConnection(SQLConfig)
 
         if (user) {
           let userData = {
-            _id: user._id,
+            id: user.id,
             name: user.name,
             email: user.email,
             username: user.username,
@@ -490,38 +490,51 @@ createConnection(SQLConfig)
       }
     });
 
-    app.get("/user/getFriendsRecommendation", (req, res) => {
+    app.get("/user/getFriendsRecommendation", async (req, res) => {
       if (req.query.token) {
-        let x = decodeToken(req.query.token);
+        let user = decodeToken(req.query.token);
 
-        if (x) {
-          User.find(
-            {
-              $and: [
-                { MBTI: { $in: MBTIComp[x.MBTI] } },
-                { _id: { $nin: [new ObjectId(x._id)] } },
-              ],
-            },
-            function (err, docs) {
-              let result = docs.map(function (user) {
-                let found = user.friends.find((element) => {
-                  return element._id == x._id;
-                });
-                if (
-                  !user.friends.find((element) => element._id == x._id) &&
-                  !user.pendings.find((element) => element._id == x._id) &&
-                  !user.blocks.find((element) => element._id == x._id)
-                ) {
-                  return user;
-                }
-              });
+        let users = await getRepository(UserSQL)
+          .createQueryBuilder("user")
+          .leftJoinAndSelect(
+            "user.friends",
+            "friends",
+            "friends.status = 'FRIEND'"
+          )
+          .leftJoinAndSelect("friends.user2", "user2")
+          .where("user.id = :id", { id: user.id })
+          .getOne();
 
-              res.status(200).send(result);
-            }
-          );
-        } else {
-          res.status(400).send({ errors: ["Invalid token. Try re-login?"] });
-        }
+        res.status(200).send(users?.friends);
+
+        // if (x) {
+        //   User.find(
+        //     {
+        //       $and: [
+        //         { MBTI: { $in: MBTIComp[x.MBTI] } },
+        //         { id: { $nin: [new ObjectId(x.id)] } },
+        //       ],
+        //     },
+        //     function (err, docs) {
+        //       let result = docs.map(function (user) {
+        //         let found = user.friends.find((element) => {
+        //           return element.id == x.id;
+        //         });
+        //         if (
+        //           !user.friends.find((element) => element.id == x.id) &&
+        //           !user.pendings.find((element) => element.id == x.id) &&
+        //           !user.blocks.find((element) => element.id == x.id)
+        //         ) {
+        //           return user;
+        //         }
+        //       });
+
+        //       res.status(200).send(result);
+        //     }
+        //   );
+        // } else {
+        //   res.status(400).send({ errors: ["Invalid token. Try re-login?"] });
+        // }
       } else {
         res.status(400).send({ errors: ["No Cookie??? :("] });
       }
@@ -548,15 +561,15 @@ createConnection(SQLConfig)
 
           if (user) {
             let userData = {
-              _id: user._id,
+              id: user.id,
               name: user.name,
               email: user.email,
               username: user.username,
             };
 
             User.updateOne(
-              { _id: user._id },
-              { $set: { profilepicture: user._id } },
+              { id: user.id },
+              { $set: { profilepicture: user.id } },
               (err, docs) => {
                 if (err) res.status(500).send({ errors: [err] });
                 return;
@@ -722,7 +735,7 @@ createConnection(SQLConfig)
     app.post("/report/closeReport", async (req, res) => {
       if (req.body.banReportee) {
         // User.updateOne(
-        //   { _id: req.body.reporteeID },
+        //   { id: req.body.reporteeID },
         //   {
         //     $set: {
         //       isBanned: true,
@@ -769,7 +782,7 @@ createConnection(SQLConfig)
         res.status(500).send("DB error");
       }
       // Report.updateOne(
-      //   { _id: req.body.reportID },
+      //   { id: req.body.reportID },
       //   {
       //     $set: {
       //       status: "Closed",
