@@ -55,7 +55,7 @@ app.post("/login", async (req, res) => {
         if (err) return console.log(err);
         if (result) {
           let userData = {};
-          userData["_id"] = doc._id;
+          userData["id"] = doc.id;
           userData["name"] = doc.name;
           userData["email"] = doc.email;
           userData["username"] = doc.username;
@@ -100,22 +100,22 @@ app.post("/addFriend", async (req, res) => {
     if (user) {
       User.find(
         [
-          { _id: target._id },
+          { id: target.id },
           {
-            $nor: [{ "friends._id": user._id }, { "pendings._id": user._id }],
+            $nor: [{ "friends.id": user.id }, { "pendings.id": user.id }],
           },
         ],
         (err, doc) => {
           if (_.isEmpty(doc)) {
             let userData = {
-              _id: user._id,
+              id: user.id,
               name: user.name,
               email: user.email,
               username: user.username,
               profilepicture: user.profilepicture,
             };
             User.updateOne(
-              { _id: target._id },
+              { id: target.id },
               { $addToSet: { pendings: userData } },
               (err, result) => {
                 console.log(result);
@@ -139,7 +139,7 @@ app.get("/getPendingFriends", (req, res) => {
   if (req.cookies) {
     let user = decodeToken(req.cookies.token);
     if (user) {
-      User.findOne({ _id: user._id }, "pendings", (err, docs) => {
+      User.findOne({ id: user.id }, "pendings", (err, docs) => {
         if (err) {
           console.log(err);
           res.status(500).send({ errors: err });
@@ -159,7 +159,7 @@ app.get("/getFriends", (req, res) => {
   if (req.cookies) {
     let user = decodeToken(req.cookies.token);
     if (user) {
-      User.findOne({ _id: user._id }, "friends", (err, docs) => {
+      User.findOne({ id: user.id }, "friends", (err, docs) => {
         if (err) {
           console.log(err);
           res.status(500).send({ errors: err });
@@ -179,7 +179,7 @@ app.get("/getBlocks", (req, res) => {
   if (req.cookies) {
     let user = decodeToken(req.cookies.token);
     if (user) {
-      User.findOne({ _id: user._id }, "blocks", (err, docs) => {
+      User.findOne({ id: user.id }, "blocks", (err, docs) => {
         if (err) {
           console.log(err);
           res.status(500).send({ errors: err });
@@ -202,7 +202,7 @@ app.post("/acceptFriendRequest", (req, res) => {
 
     if (user) {
       let userData = {
-        _id: user._id,
+        id: user.id,
         name: user.name,
         email: user.email,
         username: user.username,
@@ -210,15 +210,15 @@ app.post("/acceptFriendRequest", (req, res) => {
       };
 
       User.updateOne(
-        { _id: user._id },
-        { $pull: { pendings: { _id: target._id } } },
+        { id: user.id },
+        { $pull: { pendings: { id: target.id } } },
         (err, docs) => {
           if (err) res.status(500).send({ errors: [err] });
           return;
         }
       );
       User.updateOne(
-        { _id: target._id },
+        { id: target.id },
         { $addToSet: { friends: userData } },
         (err, result) => {
           if (err) res.status(500).send({ errors: [err] });
@@ -227,7 +227,7 @@ app.post("/acceptFriendRequest", (req, res) => {
       );
 
       User.updateOne(
-        { _id: user._id },
+        { id: user.id },
         { $addToSet: { friends: target } },
         (err, result) => {
           if (err) res.status(500).send({ errors: [err] });
@@ -251,15 +251,15 @@ app.post("/rejectFriendRequest", (req, res) => {
 
     if (user) {
       let userData = {
-        _id: user._id,
+        id: user.id,
         name: user.name,
         email: user.email,
         username: user.username,
       };
 
       User.updateOne(
-        { _id: user._id },
-        { $pull: { pendings: { _id: target._id } } },
+        { id: user.id },
+        { $pull: { pendings: { id: target.id } } },
         (err, docs) => {
           if (err) res.status(500).send({ errors: [err] });
           return;
@@ -281,14 +281,14 @@ app.post("/updateMBTI", (req, res) => {
 
     if (user) {
       let userData = {
-        _id: user._id,
+        id: user.id,
         name: user.name,
         email: user.email,
         username: user.username,
       };
 
       User.updateOne(
-        { _id: user._id },
+        { id: user.id },
         { $set: { MBTI: req.body.type } },
         (err, docs) => {
           if (err) res.status(500).send({ errors: [err] });
@@ -312,14 +312,14 @@ app.post("/updateProfile", (req, res) => {
     if (user) {
       console.log(req.body);
       let userData = {
-        _id: user._id,
+        id: user.id,
         name: user.name,
         email: user.email,
         username: user.username,
       };
 
       User.updateOne(
-        { _id: user._id },
+        { id: user.id },
         { $set: { name: req.body.name, bio: req.body.bio } },
         (err, docs) => {
           console.log(docs);
@@ -329,7 +329,7 @@ app.post("/updateProfile", (req, res) => {
       );
 
       // let payload = {};
-      // payload["_id"] = doc._id;
+      // payload["id"] = doc.id;
       // payload["name"] = doc.name;
       // payload["email"] = doc.email;
       // payload["username"] = doc.username;
@@ -356,7 +356,7 @@ app.post("/changePassword", (req, res) => {
 
     if (user) {
       let userData = {
-        _id: user._id,
+        id: user.id,
         name: user.name,
         email: user.email,
         username: user.username,
@@ -367,14 +367,14 @@ app.post("/changePassword", (req, res) => {
         return;
       }
 
-      User.findOne({ _id: user._id }, function (err, doc) {
+      User.findOne({ id: user.id }, function (err, doc) {
         if (!err) {
           bcrypt.compare(req.body.old, doc.password, async (err, result) => {
             if (err) return console.log(err);
             if (result) {
               let hashedPass = await bcrypt.hash(req.body.new, 10);
               User.updateOne(
-                { _id: user._id },
+                { id: user.id },
                 { $set: { password: hashedPass } },
                 (err, docs) => {
                   if (err) {
@@ -410,26 +410,26 @@ app.get("/getFriendsRecommendation", (req, res) => {
 
     if (user) {
       let x;
-      User.findById(user._id, function (err, docs) {
+      User.findById(user.id, function (err, docs) {
         x = docs;
       });
       User.find(
         {
           $and: [
             { MBTI: { $in: MBTIComp[user.MBTI] } },
-            { _id: { $nin: [new ObjectId(user._id)] } },
+            { id: { $nin: [new ObjectId(user.id)] } },
           ],
         },
         function (err, docs) {
           let result = docs.map(function (user) {
-            let found = user.friends.find((element) => element._id == x._id);
+            let found = user.friends.find((element) => element.id == x.id);
             //console.log(user);
             if (
-              user.friends.find((element) => element._id == x._id) ===
+              user.friends.find((element) => element.id == x.id) ===
                 undefined &&
-              user.pendings.find((element) => element._id == x._id) ===
+              user.pendings.find((element) => element.id == x.id) ===
                 undefined &&
-              user.blocks.find((element) => element._id == x._id) === undefined
+              user.blocks.find((element) => element.id == x.id) === undefined
             ) {
               return user;
             }
@@ -468,15 +468,15 @@ app.post(
 
       if (user) {
         let userData = {
-          _id: user._id,
+          id: user.id,
           name: user.name,
           email: user.email,
           username: user.username,
         };
 
         User.updateOne(
-          { _id: user._id },
-          { $set: { profilepicture: user._id } },
+          { id: user.id },
+          { $set: { profilepicture: user.id } },
           (err, docs) => {
             console.log(docs);
             if (err) res.status(500).send({ errors: [err] });
@@ -502,7 +502,7 @@ app.get("/getBannedUsers", async (req, res) => {
       $lookup: {
         from: "reports",
         localField: "banReportID",
-        foreignField: "_id",
+        foreignField: "id",
         as: "report",
       },
     },
@@ -514,7 +514,7 @@ app.get("/getBannedUsers", async (req, res) => {
 
 app.post("/unbanUser", (req, res) => {
   User.updateOne(
-    { _id: req.body.userID },
+    { id: req.body.userID },
     {
       $set: {
         bannedDate: null,

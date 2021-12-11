@@ -7,7 +7,10 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc server.ts",
     "start": "npm run build && node server.js",
-    "dev-start": "nodemon server.ts"
+    "dev-start": "nodemon server.ts",
+    "migrate:create": "ts-node ./node_modules/typeorm/cli.js migration:create -n",
+    "migrate:up": "ts-node ./node_modules/typeorm/cli.js migration:run",
+    "migrate:down": "ts-node ./node_modules/typeorm/cli.js migration:revert"
   },
   "keywords": [],
   "author": "",
@@ -35,17 +38,21 @@
     "nodemailer": "^6.7.0",
     "nodemon": "^2.0.13",
     "path": "^0.12.7",
+    "pg": "^8.7.1",
+    "pg-connection-string": "^2.5.0",
     "randomstring": "^1.2.1",
+    "reflect-metadata": "^0.1.13",
     "simple-peer-files": "^1.2.3",
     "socket.io": "^4.1.2",
     "streamsaver": "^2.0.5",
     "ts-node": "^9.1.1",
     "tslint": "^6.1.3",
+    "typeorm": "^0.2.41",
     "typescript": "^4.4.3",
     "underscore": "^1.13.1"
   },
   "devDependencies": {
-    "@types/node": "^16.11.6",
+    "@types/node": "^16.11.9",
     "@types/simple-peer": "^9.6.3"
   }
 }

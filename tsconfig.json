@@ -14,9 +14,8 @@
     "isolatedModules": false,
     "noEmit": true,
     "noImplicitAny": false,
-  },
-  "files": [
-    "server.ts"
-  ]
-  
+    "experimentalDecorators": true,
+    "strictPropertyInitialization": false,
+    "emitDecoratorMetadata": true
+  }
 }
