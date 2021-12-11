@@ -17,5 +17,7 @@
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
     "emitDecoratorMetadata": true
-  }
+  },
+
+  "files": ["./server.ts"]
 }
