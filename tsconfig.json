@@ -1,8 +1,7 @@
 {
   "compilerOptions": {
-    "rootDir": "./",
-    "outDir": "./",
-    "target": "ES2016",
+    "target": "ESNext",
+    "module": "commonjs",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
@@ -19,7 +18,5 @@
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
     "emitDecoratorMetadata": true
-  },
-
-  "files": ["./server.ts"]
+  }
 }

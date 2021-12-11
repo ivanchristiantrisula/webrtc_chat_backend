@@ -5,8 +5,8 @@
   "main": "dist/app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc server.ts",
-    "start": "npm run build && node server.js",
+    "build": "tsc server.ts --experimentalDecorators --emitDecoratorMetadata ",
+    "start": "npm run dev-start",
     "dev-start": "nodemon server.ts",
     "migrate:create": "ts-node ./node_modules/typeorm/cli.js migration:create -n",
     "migrate:up": "ts-node ./node_modules/typeorm/cli.js migration:run",

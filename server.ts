@@ -1,3 +1,4 @@
+import "reflect-metadata";
 const express = require("express");
 import { ObjectId, ObjectID } from "bson";
 import { Socket } from "socket.io";
@@ -14,7 +15,7 @@ const _ = require("underscore");
 const MBTIComp = require("./library/compability.json");
 const multer = require("multer");
 const mailer = require("nodemailer");
-import "reflect-metadata";
+
 import SQLConfig from "./db/ormconfig";
 import UserSQL from "./models/SQL/entity/User.entity";
 import FriendshipSQL from "./models/SQL/entity/Friendship.entity";

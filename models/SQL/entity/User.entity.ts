@@ -1,4 +1,3 @@
-import { Timestamp } from "mongodb";
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from "typeorm";
 import Friendship from "./Friendship.entity";
 
