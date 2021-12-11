@@ -535,4 +535,4 @@ app.get("/testCookie", (req, res) => {
   console.log(decodeToken(req.cookies.token));
 });
 
-module.exports = app;
+export default app;

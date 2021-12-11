@@ -1,9 +1,6 @@
 import "reflect-metadata";
 const express = require("express");
-import { ObjectId, ObjectID } from "bson";
 import { Socket } from "socket.io";
-const dotenv = require("dotenv").config();
-const mongoose = require("mongoose");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const http = require("http");
@@ -22,9 +19,6 @@ import FriendshipSQL from "./models/SQL/entity/Friendship.entity";
 import ReportSQL from "./models/SQL/entity/Report.entity";
 import { createConnection, getConnection, getRepository } from "typeorm";
 
-let User = require("./models/userModel.ts");
-let Report = require("./models/report/chatReportModel");
-
 const app = express();
 app.use(express.static(__dirname + "/uploads"));
 app.use(express.json());
@@ -41,6 +35,7 @@ app.use(cookieParser());
 createConnection(SQLConfig)
   .then((connection) => {
     console.log("SQL DB Connected");
+    app.use("/user");
     app.get("/", (req, res) => {
       res.status(200).send("Server is OK");
     });
@@ -290,19 +285,18 @@ createConnection(SQLConfig)
 
     app.get("/user/getBlocks", (req, res) => {
       if (req.query.token) {
-        let user = decodeToken(req.query.token);
-        if (user) {
-          User.findOne({ id: user.id }, "blocks", (err, docs) => {
-            if (err) {
-              console.error(err);
-              res.status(500).send({ errors: err });
-            }
-
-            res.status(200).send(docs);
-          });
-        } else {
-          res.status(400).send({ errors: ["Invalid token. Try re-login?"] });
-        }
+        // let user = decodeToken(req.query.token);
+        // if (user) {
+        //   User.findOne({ id: user.id }, "blocks", (err, docs) => {
+        //     if (err) {
+        //       console.error(err);
+        //       res.status(500).send({ errors: err });
+        //     }
+        //     res.status(200).send(docs);
+        //   });
+        // } else {
+        //   res.status(400).send({ errors: ["Invalid token. Try re-login?"] });
+        // }
       } else {
         res.status(400).send({ errors: ["No Cookie??? :("] });
       }
@@ -558,31 +552,28 @@ createConnection(SQLConfig)
       upload.single("file" /* name attribute of <file> element in your form */),
       (req, res, next) => {
         if (req.body.token) {
-          let user = decodeToken(req.body.token);
-
-          if (user) {
-            let userData = {
-              id: user.id,
-              name: user.name,
-              email: user.email,
-              username: user.username,
-            };
-
-            User.updateOne(
-              { id: user.id },
-              { $set: { profilepicture: user.id } },
-              (err, docs) => {
-                if (err) res.status(500).send({ errors: [err] });
-                return;
-              }
-            );
-
-            res.status(200).send({
-              user: userData,
-            });
-          } else {
-            res.status(400).send({ errors: ["Invalid token. Try re-login?"] });
-          }
+          // let user = decodeToken(req.body.token);
+          // if (user) {
+          //   let userData = {
+          //     id: user.id,
+          //     name: user.name,
+          //     email: user.email,
+          //     username: user.username,
+          //   };
+          //   User.updateOne(
+          //     { id: user.id },
+          //     { $set: { profilepicture: user.id } },
+          //     (err, docs) => {
+          //       if (err) res.status(500).send({ errors: [err] });
+          //       return;
+          //     }
+          //   );
+          //   res.status(200).send({
+          //     user: userData,
+          //   });
+          // } else {
+          //   res.status(400).send({ errors: ["Invalid token. Try re-login?"] });
+          // }
         } else {
           res.status(400).send({ errors: ["No Cookie??? :("] });
         }
