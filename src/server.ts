@@ -35,7 +35,6 @@ app.use(cookieParser());
 createConnection(SQLConfig)
   .then((connection) => {
     console.log("SQL DB Connected");
-    app.use("/user");
     app.get("/", (req, res) => {
       res.status(200).send("Server is OK");
     });
