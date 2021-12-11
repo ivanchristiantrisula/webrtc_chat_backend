@@ -20,7 +20,7 @@ import ReportSQL from "./models/SQL/entity/Report.entity";
 import { createConnection, getConnection, getRepository } from "typeorm";
 
 const app = express();
-app.use(express.static(__dirname + "/uploads"));
+app.use(express.static(__dirname + "../uploads"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
