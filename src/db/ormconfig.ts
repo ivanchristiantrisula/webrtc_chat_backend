@@ -20,6 +20,7 @@ const config: ConnectionOptions = {
   cli: {
     migrationsDir: __dirname + "/migrations",
   },
+  ssl: connectionOptions.ssl === true,
 };
 
 export default config;

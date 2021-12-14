@@ -17,7 +17,12 @@ import SQLConfig from "./db/ormconfig";
 import UserSQL from "./models/SQL/entity/User.entity";
 import FriendshipSQL from "./models/SQL/entity/Friendship.entity";
 import ReportSQL from "./models/SQL/entity/Report.entity";
-import { createConnection, getConnection, getRepository } from "typeorm";
+import {
+  createConnection,
+  createQueryBuilder,
+  getConnection,
+  getRepository,
+} from "typeorm";
 
 const app = express();
 app.use(express.static(__dirname + "../uploads"));
@@ -167,19 +172,45 @@ createConnection(SQLConfig)
     app.get("/user/findUser", async (req, res) => {
       let keyword = req.query.keyword;
 
-      let users = await getConnection()
-        .createQueryBuilder()
-        .select("user")
-        .from(UserSQL, "user")
-        .where("LOWER(user.username) like LOWER('%' || :username || '%')", {
-          username: keyword,
-        })
-        .getMany();
+      if (req.query.token) {
+        let userData = decodeToken(req.query.token);
 
-      if (users !== undefined) {
-        res.status(200).send(users);
-      } else {
-        res.status(500).send();
+        if (userData) {
+          try {
+            let users = await getConnection()
+              .createQueryBuilder()
+              .select("user")
+              .from(UserSQL, "user")
+              .where(
+                "LOWER(user.username) like LOWER('%' || :username || '%')",
+                {
+                  username: keyword,
+                }
+              )
+              .andWhere((qb) => {
+                const blocks = qb
+                  .subQuery()
+                  .select("friendship.user2")
+                  .from(FriendshipSQL, "friendship")
+                  .where(
+                    `friendship.user1 = :uid AND friendship.status = 'BLOCKED'`,
+                    { uid: userData.id }
+                  )
+                  .andWhere(
+                    "user.isVerified IS TRUE AND user.isBanned IS FALSE"
+                  )
+                  .getQuery();
+
+                return "user.id NOT IN " + blocks;
+              })
+              .getMany();
+
+            res.status(200).send(users);
+          } catch (error) {
+            console.error(error);
+            res.status(500).send();
+          }
+        }
       }
     });
 
@@ -257,6 +288,9 @@ createConnection(SQLConfig)
         if (user) {
           let users = await getRepository(UserSQL)
             .createQueryBuilder("user")
+            .select(
+              "user.id, user.name, user.email, user.username, user.profilepicture, user.bio, user.MBTI"
+            )
             .leftJoinAndSelect(
               "user.friends",
               "friends",
@@ -266,14 +300,6 @@ createConnection(SQLConfig)
             .where("user.id = :id", { id: user.id })
             .getOne();
           res.status(200).send(users?.friends);
-          //res.status(200).send({});
-          // User.findOne({ id: user.id }, "friends", (err, docs) => {
-          //   if (err) {
-          //     console.error(err);
-          //     res.status(500).send({ errors: err });
-          //   }
-          //   res.status(200).send(docs);
-          // });
         } else {
           res.status(400).send({ errors: ["Invalid token. Try re-login?"] });
         }
@@ -282,20 +308,8 @@ createConnection(SQLConfig)
       }
     });
 
-    app.get("/user/getBlocks", (req, res) => {
+    app.get("/user/getBlocks", async (req, res) => {
       if (req.query.token) {
-        // let user = decodeToken(req.query.token);
-        // if (user) {
-        //   User.findOne({ id: user.id }, "blocks", (err, docs) => {
-        //     if (err) {
-        //       console.error(err);
-        //       res.status(500).send({ errors: err });
-        //     }
-        //     res.status(200).send(docs);
-        //   });
-        // } else {
-        //   res.status(400).send({ errors: ["Invalid token. Try re-login?"] });
-        // }
       } else {
         res.status(400).send({ errors: ["No Cookie??? :("] });
       }
@@ -488,47 +502,33 @@ createConnection(SQLConfig)
       if (req.query.token) {
         let user = decodeToken(req.query.token);
 
-        let users = await getRepository(UserSQL)
-          .createQueryBuilder("user")
-          .leftJoinAndSelect(
-            "user.friends",
-            "friends",
-            "friends.status = 'FRIEND'"
-          )
-          .leftJoinAndSelect("friends.user2", "user2")
-          .where("user.id = :id", { id: user.id })
-          .getOne();
+        try {
+          const subquery = createQueryBuilder()
+            .subQuery()
+            .select("friendship.user2")
+            .from(FriendshipSQL, "friendship")
+            .where("friendship.user1 = :id", { id: user.id })
+            .getQuery();
 
-        res.status(200).send(users?.friends);
+          let users = await getRepository(UserSQL)
+            .createQueryBuilder()
+            .select("f")
+            .distinct(false)
+            .from(FriendshipSQL, "f")
+            .leftJoin(UserSQL, "u", "u.id = f.user2")
+            .leftJoinAndSelect("f.user2", "fJoin")
+            .where("f.user1 IN " + subquery)
+            .andWhere("f.user2 NOT IN " + subquery)
+            .andWhere("f.user2 <> :id", { id: user.id })
+            .getMany();
 
-        // if (x) {
-        //   User.find(
-        //     {
-        //       $and: [
-        //         { MBTI: { $in: MBTIComp[x.MBTI] } },
-        //         { id: { $nin: [new ObjectId(x.id)] } },
-        //       ],
-        //     },
-        //     function (err, docs) {
-        //       let result = docs.map(function (user) {
-        //         let found = user.friends.find((element) => {
-        //           return element.id == x.id;
-        //         });
-        //         if (
-        //           !user.friends.find((element) => element.id == x.id) &&
-        //           !user.pendings.find((element) => element.id == x.id) &&
-        //           !user.blocks.find((element) => element.id == x.id)
-        //         ) {
-        //           return user;
-        //         }
-        //       });
+          res.status(200).send(users);
+        } catch (error) {
+          console.error(error);
+          res.status(500).send("DB error");
+        }
 
-        //       res.status(200).send(result);
-        //     }
-        //   );
-        // } else {
-        //   res.status(400).send({ errors: ["Invalid token. Try re-login?"] });
-        // }
+        //res.status(200).send(users?.friends);
       } else {
         res.status(400).send({ errors: ["No Cookie??? :("] });
       }
@@ -551,28 +551,6 @@ createConnection(SQLConfig)
       upload.single("file" /* name attribute of <file> element in your form */),
       (req, res, next) => {
         if (req.body.token) {
-          // let user = decodeToken(req.body.token);
-          // if (user) {
-          //   let userData = {
-          //     id: user.id,
-          //     name: user.name,
-          //     email: user.email,
-          //     username: user.username,
-          //   };
-          //   User.updateOne(
-          //     { id: user.id },
-          //     { $set: { profilepicture: user.id } },
-          //     (err, docs) => {
-          //       if (err) res.status(500).send({ errors: [err] });
-          //       return;
-          //     }
-          //   );
-          //   res.status(200).send({
-          //     user: userData,
-          //   });
-          // } else {
-          //   res.status(400).send({ errors: ["Invalid token. Try re-login?"] });
-          // }
         } else {
           res.status(400).send({ errors: ["No Cookie??? :("] });
         }
@@ -725,20 +703,6 @@ createConnection(SQLConfig)
 
     app.post("/report/closeReport", async (req, res) => {
       if (req.body.banReportee) {
-        // User.updateOne(
-        //   { id: req.body.reporteeID },
-        //   {
-        //     $set: {
-        //       isBanned: true,
-        //       bannedDate: new Date(),
-        //       banReportID: new ObjectID(req.body.reportID),
-        //     },
-        //   },
-        //   (err, docs) => {
-        //     if (err) res.status(500).send({ errors: [err] });
-        //     return;
-        //   }
-        // );
         try {
           await getConnection()
             .createQueryBuilder()
@@ -772,20 +736,6 @@ createConnection(SQLConfig)
       } catch (error) {
         res.status(500).send("DB error");
       }
-      // Report.updateOne(
-      //   { id: req.body.reportID },
-      //   {
-      //     $set: {
-      //       status: "Closed",
-      //       closedDate: new Date(),
-      //       isReporteeBanned: req.body.banReportee,
-      //     },
-      //   },
-      //   (err, docs) => {
-      //     if (err) res.status(500).send({ errors: [err] });
-      //     return;
-      //   }
-      // );
     });
 
     const server = http.createServer(app);
