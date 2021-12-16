@@ -15,6 +15,7 @@ export default class Friendship {
   id: number;
 
   @ManyToOne(() => User, (user) => user.id)
+  @JoinColumn()
   user1: User;
 
   @ManyToOne(() => User, (user) => user.id)

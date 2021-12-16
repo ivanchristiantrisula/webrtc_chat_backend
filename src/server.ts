@@ -286,20 +286,15 @@ createConnection(SQLConfig)
       if (req.query.token) {
         let user = decodeToken(req.query.token);
         if (user) {
-          let users = await getRepository(UserSQL)
-            .createQueryBuilder("user")
-            .select(
-              "user.id, user.name, user.email, user.username, user.profilepicture, user.bio, user.MBTI"
-            )
-            .leftJoinAndSelect(
-              "user.friends",
-              "friends",
-              "friends.status = 'FRIEND'"
-            )
-            .leftJoinAndSelect("friends.user2", "user2")
-            .where("user.id = :id", { id: user.id })
-            .getOne();
-          res.status(200).send(users?.friends);
+          let friends = await getConnection()
+            .createQueryBuilder()
+            .select("friendship")
+            .from(FriendshipSQL, "friendship")
+            .leftJoinAndSelect("friendship.user2", "user2")
+            .where("friendship.user1 = :id", { id: user.id })
+            .getMany();
+
+          res.status(200).send(friends.map((friend) => friend.user2));
         } else {
           res.status(400).send({ errors: ["Invalid token. Try re-login?"] });
         }
@@ -510,7 +505,7 @@ createConnection(SQLConfig)
             .where("friendship.user1 = :id", { id: user.id })
             .getQuery();
 
-          let users = await getRepository(UserSQL)
+          const users = await getRepository(UserSQL)
             .createQueryBuilder()
             .select("f")
             .distinct(false)
