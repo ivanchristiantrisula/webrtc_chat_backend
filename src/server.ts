@@ -23,6 +23,7 @@ import {
   getConnection,
   getRepository,
 } from "typeorm";
+import Friendship from "./models/SQL/entity/Friendship.entity";
 
 const app = express();
 app.use(express.static("./uploads"));
@@ -256,6 +257,43 @@ createConnection(SQLConfig)
         }
       } else {
         res.status(401).send({ errors: "No Cookie :(" });
+      }
+    });
+
+    app.post("/user/unfriend", async (req, res) => {
+      if (req.body.token) {
+        let user = decodeToken(req.body.token);
+        if (user) {
+          if (req.body.targetID) {
+            const target = req.body.targetID;
+            try {
+              await getConnection()
+                .createQueryBuilder()
+                .delete()
+                .from(FriendshipSQL)
+                .where("user1 = :id AND user2 = :target", {
+                  id: user.id,
+                  target: target,
+                })
+                .orWhere("user2 = :id AND user1 = :target", {
+                  id: user.id,
+                  target: target,
+                })
+                .execute();
+
+              res.status(200).send("OK");
+            } catch (error) {
+              console.error(error);
+              res.status(500).send("DB Error");
+            }
+          } else {
+            res.status(400).send("No target user ID");
+          }
+        } else {
+          res.status(400).send({ errors: ["Invalid token"] });
+        }
+      } else {
+        res.status(400).send({ errors: ["No Token"] });
       }
     });
 
