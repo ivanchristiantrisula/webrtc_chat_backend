@@ -791,7 +791,27 @@ createConnection(SQLConfig)
       );
 
       if (userData) {
-        if (!users[socket.id]) {
+        const duplicateUser = Object.keys(users).find((key) => {
+          let user = users[key];
+          if (user != null) {
+            if (user.id == userData.id) {
+              console.log(
+                `Found duplicate online user. Disconnecting the newer one. ${JSON.stringify(
+                  userData
+                )}`
+              );
+              socket.emit("duplicateLogin", { duplicate: true });
+              socket.disconnect();
+              //io.sockets.sockets[key].disconnect(true);
+              users[key] = null;
+              delete users[key];
+            }
+          } else {
+            socket.disconnect();
+          }
+        });
+
+        if (!duplicateUser) {
           users[socket.id] = userData;
           console.info(userData.email + " connected!");
         }
