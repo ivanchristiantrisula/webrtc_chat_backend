@@ -9,7 +9,7 @@ const randomstring = require("randomstring");
 const bcrypt = require("bcrypt");
 const decodeToken = require("./library/decodeToken");
 const _ = require("underscore");
-const MBTIComp = require("./library/compability.json");
+import MBTIComp from "./library/compability.json";
 const multer = require("multer");
 const mailer = require("nodemailer");
 
@@ -533,29 +533,39 @@ createConnection(SQLConfig)
 
     app.get("/user/getFriendsRecommendation", async (req, res) => {
       if (req.query.token) {
-        let user = decodeToken(req.query.token);
+        let userData = decodeToken(req.query.token);
 
         try {
           const subquery = createQueryBuilder()
             .subQuery()
             .select("friendship.user2")
+            .distinct(true)
             .from(FriendshipSQL, "friendship")
-            .where("friendship.user1 = :id", { id: user.id })
+            .where("friendship.user1 = :id", { id: userData.id })
             .getQuery();
 
-          const users = await getRepository(UserSQL)
+          let users = await getRepository(UserSQL)
             .createQueryBuilder()
             .select("f")
-            .distinct(false)
+            .distinct(true)
             .from(FriendshipSQL, "f")
             .leftJoin(UserSQL, "u", "u.id = f.user2")
             .leftJoinAndSelect("f.user2", "fJoin")
             .where("f.user1 IN " + subquery)
             .andWhere("f.user2 NOT IN " + subquery)
-            .andWhere("f.user2 <> :id", { id: user.id })
+            .andWhere("f.user2 <> :id", { id: userData.id })
             .getMany();
 
-          res.status(200).send(users);
+          let mutuals: any = users.map((user) => user.user2);
+
+          mutuals.forEach((user, index) => {
+            mutuals[index].isMBTICompatible = MBTIComp[userData.MBTI].includes(
+              user.MBTI
+            );
+            mutuals[index].hasMutualFriend = true;
+          });
+
+          res.status(200).send(mutuals);
         } catch (error) {
           console.error(error);
           res.status(500).send("DB error");
