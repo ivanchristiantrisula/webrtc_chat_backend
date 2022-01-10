@@ -341,6 +341,66 @@ createConnection(SQLConfig)
       }
     });
 
+    app.post("/user/blockUser", async (req, res) => {
+      if (!req.body.token) {
+        res.status(400).send("no token");
+        return;
+      }
+
+      const userData = decodeToken(req.body.token);
+      const target = req.body.target;
+
+      let friendshipExist = await connection
+        .getRepository(FriendshipSQL)
+        .createQueryBuilder("friendship")
+        .where("friendship.user1 = :user1 and friendship.user2 = :user2", {
+          user1: userData.id,
+          user2: target,
+        })
+        .getOne();
+
+      if (friendshipExist) {
+        try {
+          await getConnection()
+            .createQueryBuilder()
+            .update(FriendshipSQL)
+            .set({ status: "BLOCK" })
+            .where(
+              "(friendship.user1 = :user1 and friendship.user2 = :user2) OR (friendship.user2 = :user1 and friendship.user1 = :user2)",
+              {
+                user1: userData.id,
+                user2: target,
+              }
+            )
+            .execute();
+
+          res.status(200).send("OK");
+        } catch (error) {
+          console.log(error);
+          res.status(500).send("DB Error");
+        }
+      } else {
+        const newFriend1 = new FriendshipSQL();
+        newFriend1.user1 = userData.id;
+        newFriend1.user2 = target;
+        newFriend1.status = "BLOCK";
+
+        const newFriend2 = new FriendshipSQL();
+        newFriend2.user1 = target;
+        newFriend2.user2 = userData.id;
+        newFriend2.status = "BLOCK";
+
+        try {
+          await connection.manager.save(newFriend1);
+          await connection.manager.save(newFriend2);
+          res.status(200).send("Success");
+        } catch (error) {
+          console.error(error);
+          res.status(500).send("DB error");
+        }
+      }
+    });
+
     app.get("/user/getBlocks", async (req, res) => {
       if (req.query.token) {
       } else {
