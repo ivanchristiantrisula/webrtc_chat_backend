@@ -25,7 +25,8 @@ export default class User {
   bio: string = "";
 
   @Column({ default: true })
-  profilepicture: string = "default";
+  profilepicture: string =
+    "https://res.cloudinary.com/dkrfnxthx/image/upload/v1642180170/default_cldnqh.png";
 
   @Column({ nullable: true })
   banReportID: string;

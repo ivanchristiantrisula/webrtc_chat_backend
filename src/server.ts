@@ -12,6 +12,8 @@ const _ = require("underscore");
 import MBTIComp from "./library/compability.json";
 const multer = require("multer");
 const mailer = require("nodemailer");
+const cloudinary = require("cloudinary");
+import formidable from "formidable";
 
 import SQLConfig from "./db/ormconfig";
 import UserSQL from "./models/SQL/entity/User.entity";
@@ -23,7 +25,6 @@ import {
   getConnection,
   getRepository,
 } from "typeorm";
-import Friendship from "./models/SQL/entity/Friendship.entity";
 
 const app = express();
 app.use(express.static("./uploads"));
@@ -37,6 +38,12 @@ const corsConfig = {
 };
 app.use(cors(corsConfig));
 app.use(cookieParser());
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_NAME,
+  api_key: process.env.CLOUDINARY_KEY,
+  api_secret: process.env.CLOUDINARY_SECRET,
+});
 
 createConnection(SQLConfig)
   .then((connection) => {
@@ -330,6 +337,7 @@ createConnection(SQLConfig)
             .from(FriendshipSQL, "friendship")
             .leftJoinAndSelect("friendship.user2", "user2")
             .where("friendship.user1 = :id", { id: user.id })
+            .andWhere("friendship.status = :status", { status: "FRIEND" })
             .getMany();
 
           res.status(200).send(friends.map((friend) => friend.user2));
@@ -637,28 +645,41 @@ createConnection(SQLConfig)
       }
     });
 
-    let storage = multer.diskStorage({
-      destination: function (req, file, cb) {
-        cb(null, "./uploads/profilepictures");
-      },
-      filename: function (req, file, cb) {
-        cb(null, file.originalname);
-      },
-    });
-    const upload = multer({
-      storage: storage,
-    });
+    app.post("/user/uploadProfilePicture", async (req, res, next) => {
+      if (req.query.token) {
+        let user = decodeToken(req.query.token);
 
-    app.post(
-      "/user/uploadProfilePicture",
-      upload.single("file" /* name attribute of <file> element in your form */),
-      (req, res, next) => {
-        if (req.body.token) {
+        if (user) {
+          const form = formidable({});
+          form.parse(req, (err, fields, files) => {
+            cloudinary.v2.uploader.upload(
+              files.file.filepath,
+              async (err, result) => {
+                if (err) {
+                  res.status(500).send("CDN Error");
+                }
+                try {
+                  await getConnection()
+                    .createQueryBuilder()
+                    .update(UserSQL)
+                    .set({ profilepicture: result.secure_url })
+                    .where("id = :id", { id: user.id })
+                    .execute();
+
+                  res.status(200).send("OK");
+                } catch (error) {
+                  res.status(500).send("DB error");
+                }
+              }
+            );
+          });
         } else {
-          res.status(400).send({ errors: ["No Cookie??? :("] });
+          res.status(400).send({ errors: ["Token not valid"] });
         }
+      } else {
+        res.status(400).send("No Token");
       }
-    );
+    });
 
     app.get("/user/getBannedUsers", async (req, res) => {
       try {
@@ -861,25 +882,26 @@ createConnection(SQLConfig)
       );
 
       if (userData) {
-        const duplicateUser = Object.keys(users).find((key) => {
-          let user = users[key];
-          if (user != null) {
-            if (user.id == userData.id) {
-              console.log(
-                `Found duplicate online user. Disconnecting the newer one. ${JSON.stringify(
-                  userData
-                )}`
-              );
-              socket.emit("duplicateLogin", { duplicate: true });
-              socket.disconnect();
-              //io.sockets.sockets[key].disconnect(true);
-              users[key] = null;
-              delete users[key];
-            }
-          } else {
-            socket.disconnect();
-          }
-        });
+        // const duplicateUser = Object.keys(users).find((key) => {
+        //   let user = users[key];
+        //   if (user != null) {
+        //     if (user.id == userData.id) {
+        //       console.log(
+        //         `Found duplicate online user. Disconnecting the newer one. ${JSON.stringify(
+        //           userData
+        //         )}`
+        //       );
+        //       socket.emit("duplicateLogin", { duplicate: true });
+        //       socket.disconnect();
+        //       //io.sockets.sockets[key].disconnect(true);
+        //       users[key] = null;
+        //       delete users[key];
+        //     }
+        //   } else {
+        //     socket.disconnect();
+        //   }
+        // });
+        const duplicateUser = false;
 
         if (!duplicateUser) {
           users[socket.id] = userData;
