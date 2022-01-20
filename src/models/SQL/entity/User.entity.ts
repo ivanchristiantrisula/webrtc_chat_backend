@@ -1,5 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from "typeorm";
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  OneToOne,
+  JoinColumn,
+} from "typeorm";
 import Friendship from "./Friendship.entity";
+import FriendFinderProfile from "./FriendFinderProfile.entity";
 
 @Entity()
 export default class User {
@@ -19,9 +27,6 @@ export default class User {
   username: string;
 
   @Column({ default: true })
-  MBTI: string = "";
-
-  @Column({ default: true })
   bio: string = "";
 
   @Column({ default: true })
@@ -39,6 +44,10 @@ export default class User {
 
   @Column({ default: true })
   isVerified: Boolean = false;
+
+  @OneToOne(() => FriendFinderProfile, (ffp) => ffp.user)
+  @JoinColumn()
+  friendFinderProfile: FriendFinderProfile;
 
   @OneToMany(() => Friendship, (friendship) => friendship.user1)
   friends: Friendship[];

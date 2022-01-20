@@ -25,6 +25,7 @@ import {
   getConnection,
   getRepository,
 } from "typeorm";
+import FriendFinderProfile from "./models/SQL/entity/FriendFinderProfile.entity";
 
 const app = express();
 app.use(express.static("./uploads"));
@@ -66,7 +67,12 @@ createConnection(SQLConfig)
         User.username = username;
 
         try {
-          await connection.manager.save(User);
+          let userResult = await connection.manager.save(User);
+
+          let ffp = new FriendFinderProfile();
+          ffp.user = userResult;
+          await connection.manager.save(ffp);
+
           res.status(200).send("OK");
         } catch (error) {
           console.error(error);
@@ -147,6 +153,7 @@ createConnection(SQLConfig)
         .createQueryBuilder()
         .select("user")
         .from(UserSQL, "user")
+        .leftJoinAndSelect("user.friendFinderProfile", "ffp")
         .where("user.email = :email", { email: email })
         .getOne();
 
@@ -166,6 +173,7 @@ createConnection(SQLConfig)
           }
 
           let token = require("./library/generateToken")(user);
+          console.log(user);
 
           res.status(200).send({
             user,
@@ -189,6 +197,7 @@ createConnection(SQLConfig)
               .createQueryBuilder()
               .select("user")
               .from(UserSQL, "user")
+              .leftJoinAndSelect("user.friendFinderProfile", "ffp")
               .where(
                 "LOWER(user.username) like LOWER('%' || :username || '%')",
                 {
@@ -312,6 +321,7 @@ createConnection(SQLConfig)
             .getRepository(FriendshipSQL)
             .createQueryBuilder("friendship")
             .leftJoinAndSelect("friendship.user2", "user")
+            .leftJoinAndSelect("user.friendFinderProfile", "ffp")
             .where("status = :status AND friendship.user1 = :user", {
               status: "PENDING",
               user: user.id,
@@ -336,6 +346,7 @@ createConnection(SQLConfig)
             .select("friendship")
             .from(FriendshipSQL, "friendship")
             .leftJoinAndSelect("friendship.user2", "user2")
+            .leftJoinAndSelect("user2.friendFinderProfile", "ffp")
             .where("friendship.user1 = :id", { id: user.id })
             .andWhere("friendship.status = :status", { status: "FRIEND" })
             .getMany();
@@ -483,12 +494,12 @@ createConnection(SQLConfig)
         if (user) {
           let result = await getConnection()
             .createQueryBuilder()
-            .update(UserSQL)
-            .set({ MBTI: req.body.type })
-            .where("id = :id", { id: user.id })
+            .update(FriendFinderProfile)
+            .set({ MBTI: req.body.type, answers: req.body.answers })
+            .where("id = :id", { id: user.friendFinderProfile.id })
             .execute();
-
-          if (result.affected?.toString) {
+          if (result.affected?.valueOf) {
+            console.log(result.affected?.valueOf);
             res.status(200).send("Success");
           } else {
             res.status(500).send("Internal Error");
@@ -603,6 +614,11 @@ createConnection(SQLConfig)
       if (req.query.token) {
         let userData = decodeToken(req.query.token);
 
+        if (!userData.friendFinderProfile.MBTI) {
+          res.status(401).send("User doesnt have MBTI type yet!");
+          return;
+        }
+
         try {
           const subquery = createQueryBuilder()
             .subQuery()
@@ -619,6 +635,7 @@ createConnection(SQLConfig)
             .from(FriendshipSQL, "f")
             .leftJoin(UserSQL, "u", "u.id = f.user2")
             .leftJoinAndSelect("f.user2", "fJoin")
+            .leftJoinAndSelect("fJoin.friendFinderProfile", "ffp")
             .where("f.user1 IN " + subquery)
             .andWhere("f.user2 NOT IN " + subquery)
             .andWhere("f.user2 <> :id", { id: userData.id })
@@ -626,13 +643,36 @@ createConnection(SQLConfig)
 
           let mutuals: any = users.map((user) => user.user2);
 
-          mutuals.forEach((user, index) => {
-            mutuals[index].isMBTICompatible = MBTIComp[userData.MBTI].includes(
-              user.MBTI
-            );
-            mutuals[index].hasMutualFriend = true;
-          });
+          //remove duplicate user in mutuals array
+          mutuals = [...new Map(mutuals.map((u) => [u.id, u])).values()];
 
+          mutuals.forEach((mutualUser, index) => {
+            if (
+              !mutualUser.friendFinderProfile.MBTI ||
+              !mutualUser.friendFinderProfile.answers
+            ) {
+              mutuals[index].isMBTICompatible = false;
+              mutuals[index].sameAnswerCount = null;
+              return;
+            }
+
+            mutuals[index].isMBTICompatible = MBTIComp[
+              userData.friendFinderProfile.MBTI
+            ].includes(mutualUser.friendFinderProfile.MBTI);
+
+            mutuals[index].hasMutualFriend = true;
+
+            //count same answer
+            let count = 0;
+            userData.friendFinderProfile.answers.forEach((usersAnswer, num) => {
+              if (usersAnswer === mutualUser.friendFinderProfile.answers[num]) {
+                count++;
+              }
+              return;
+            });
+
+            mutuals[index].sameAnswerCount = count;
+          });
           res.status(200).send(mutuals);
         } catch (error) {
           console.error(error);
@@ -687,6 +727,7 @@ createConnection(SQLConfig)
           .createQueryBuilder()
           .select("user")
           .from(UserSQL, "user")
+          .leftJoinAndSelect("user.friendFinderProfile", "ffp")
           .where("user.isBanned = true")
           .getMany();
 
