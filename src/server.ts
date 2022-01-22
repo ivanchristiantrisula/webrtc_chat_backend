@@ -643,10 +643,18 @@ createConnection(SQLConfig)
 
           let mutuals: any = users.map((user) => user.user2);
 
+          //count the duplicates.
+          const mutualsCount = mutuals.reduce((acc, curr) => {
+            const key = curr.id;
+            acc[key] = (acc[key] || 0) + 1;
+            return acc;
+          }, {});
+
           //remove duplicate user in mutuals array
           mutuals = [...new Map(mutuals.map((u) => [u.id, u])).values()];
 
           mutuals.forEach((mutualUser, index) => {
+            mutuals[index].mutualsCount = mutualsCount[mutualUser.id];
             if (
               !mutualUser.friendFinderProfile.MBTI ||
               !mutualUser.friendFinderProfile.answers
@@ -672,7 +680,19 @@ createConnection(SQLConfig)
             });
 
             mutuals[index].sameAnswerCount = count;
+
+            //below are the codes for calculating the score
+            const tmf = mutualsCount[mutualUser.id]; //TOTAL MUTUAL FRIEND
+            const cp = mutuals[index] ? 1 : 0; //Compatible Personality. Is MBTI compatible or not
+            const sa = mutuals[index].sameAnswerCount; //Same Answers. Total MBTI questions with same answers
+            const tq = 10; //Total Questions. Total MBTI Test questions
+
+            const score =
+              tmf * 2 + (cp * 100 * 50) / 100 + ((sa / tq) * 100 * 50) / 100;
+            mutuals[index].score = score;
           });
+          //sort users by their compability score
+          mutuals = mutuals.sort((a, b) => b.score - a.score);
           res.status(200).send(mutuals);
         } catch (error) {
           console.error(error);
