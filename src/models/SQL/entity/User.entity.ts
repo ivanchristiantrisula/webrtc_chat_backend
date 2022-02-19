@@ -37,7 +37,7 @@ export default class User {
   banReportID: string;
 
   @Column({ nullable: true })
-  banDate: Date; // TODO : CEK DI CODING MANUAL SET TIMESTAMP
+  banDate: Date = new Date();
 
   @Column({ default: true })
   isBanned: Boolean = false;
