@@ -995,13 +995,16 @@ createConnection(SQLConfig)
 
       //MEETING SOCKET
 
-      socket.on("inviteUserToMeeting", (data) => {
+      const inviteUserToMeeting = (data: any) => {
         io.to(data.to).emit("meetingInvitation", {
           meetingID: data.meetingID,
           from: socket.id,
           senderInfo: userData,
+          purpose: data.purpose ? data.purpose : "meeting",
         });
-      });
+      };
+
+      socket.on("inviteUserToMeeting", inviteUserToMeeting);
 
       socket.on("respondMeetingInvitation", (data) => {
         io.to(data.to).emit("meetingInvitationResponse", data.response);
@@ -1036,10 +1039,21 @@ createConnection(SQLConfig)
         }
       });
 
-      socket.on("requestNewRoom", () => {
+      socket.on("requestNewRoom", (data: { invitedUser }) => {
         let meetingID = randomstring.generate(5);
         meetingRooms[meetingID] = new Array(socket.id);
-        socket.emit("meetingID", meetingID);
+        socket.emit("meetingID", {
+          id: meetingID,
+          private: data.invitedUser !== undefined ? true : false,
+        });
+
+        if (data.invitedUser !== undefined) {
+          inviteUserToMeeting({
+            meetingID: meetingID,
+            to: data.invitedUser,
+            purpose: "private",
+          });
+        }
       });
 
       socket.on("requestMeetingMembers", (data) => {
