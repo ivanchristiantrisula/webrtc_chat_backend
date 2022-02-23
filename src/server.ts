@@ -642,6 +642,7 @@ createConnection(SQLConfig)
             .getMany();
 
           let mutuals: any = users.map((user) => user.user2);
+          console.log(users);
 
           //count the duplicates.
           const mutualsCount = mutuals.reduce((acc, curr) => {
@@ -661,6 +662,10 @@ createConnection(SQLConfig)
             ) {
               mutuals[index].isMBTICompatible = false;
               mutuals[index].sameAnswerCount = null;
+
+              //score only calculated by their total mutual friends
+              const tmf = mutualsCount[mutualUser.id];
+              mutuals[index].score = tmf * 2;
               return;
             }
 
@@ -690,6 +695,8 @@ createConnection(SQLConfig)
             const score =
               tmf * 2 + (cp * 100 * 50) / 100 + ((sa / tq) * 100 * 50) / 100;
             mutuals[index].score = score;
+
+            console.log(score);
           });
           //sort users by their compability score
           mutuals = mutuals.sort((a, b) => b.score - a.score);
