@@ -37,7 +37,7 @@ export default class User {
   banReportID: string;
 
   @Column({ nullable: true })
-  banDate: Date = new Date();
+  banDate: Date;
 
   @Column({ default: true })
   isBanned: Boolean = false;
