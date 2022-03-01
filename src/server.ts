@@ -173,7 +173,6 @@ createConnection(SQLConfig)
           }
 
           let token = require("./library/generateToken")(user);
-          console.log(user);
 
           res.status(200).send({
             user,
