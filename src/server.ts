@@ -641,7 +641,6 @@ createConnection(SQLConfig)
             .getMany();
 
           let mutuals: any = users.map((user) => user.user2);
-          console.log(users);
 
           //count the duplicates.
           const mutualsCount = mutuals.reduce((acc, curr) => {
