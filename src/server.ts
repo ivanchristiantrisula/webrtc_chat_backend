@@ -618,7 +618,95 @@ createConnection(SQLConfig)
           return;
         }
 
-        try {
+        if (req.query.mode == "advance") {
+          try {
+            const subquery = createQueryBuilder()
+              .subQuery()
+              .select("friendship.user2")
+              .distinct(true)
+              .from(FriendshipSQL, "friendship")
+              .where("friendship.user1 = :id", { id: userData.id })
+              .getQuery();
+
+            let users = await getRepository(UserSQL)
+              .createQueryBuilder()
+              .select("f")
+              .distinct(true)
+              .from(FriendshipSQL, "f")
+              .leftJoin(UserSQL, "u", "u.id = f.user2")
+              .leftJoinAndSelect("f.user2", "fJoin")
+              .leftJoinAndSelect("fJoin.friendFinderProfile", "ffp")
+              .where("f.user1 IN " + subquery)
+              .andWhere("f.user2 NOT IN " + subquery)
+              .andWhere("f.user2 <> :id", { id: userData.id })
+              .getMany();
+
+            let mutuals: any = users.map((user) => user.user2);
+
+            //count the duplicates.
+            const mutualsCount = mutuals.reduce((acc, curr) => {
+              const key = curr.id;
+              acc[key] = (acc[key] || 0) + 1;
+              return acc;
+            }, {});
+
+            //remove duplicate user in mutuals array
+            mutuals = [...new Map(mutuals.map((u) => [u.id, u])).values()];
+
+            mutuals.forEach((mutualUser, index) => {
+              mutuals[index].mutualsCount = mutualsCount[mutualUser.id];
+              if (
+                !mutualUser.friendFinderProfile.MBTI ||
+                !mutualUser.friendFinderProfile.answers
+              ) {
+                mutuals[index].isMBTICompatible = false;
+                mutuals[index].sameAnswerCount = null;
+
+                //score only calculated by their total mutual friends
+                const tmf = mutualsCount[mutualUser.id];
+                mutuals[index].score = tmf * 2;
+                return;
+              }
+
+              mutuals[index].isMBTICompatible = MBTIComp[
+                userData.friendFinderProfile.MBTI
+              ].includes(mutualUser.friendFinderProfile.MBTI);
+
+              mutuals[index].hasMutualFriend = true;
+
+              //count same answer
+              let count = 0;
+              userData.friendFinderProfile.answers.forEach(
+                (usersAnswer, num) => {
+                  if (
+                    usersAnswer === mutualUser.friendFinderProfile.answers[num]
+                  ) {
+                    count++;
+                  }
+                  return;
+                }
+              );
+
+              mutuals[index].sameAnswerCount = count;
+
+              //below are the codes for calculating the score
+              const tmf = mutualsCount[mutualUser.id]; //TOTAL MUTUAL FRIEND
+              const cp = mutuals[index] ? 1 : 0; //Compatible Personality. Is MBTI compatible or not
+              const sa = mutuals[index].sameAnswerCount; //Same Answers. Total MBTI questions with same answers
+              const tq = 10; //Total Questions. Total MBTI Test questions
+
+              const score =
+                tmf * 2 + (cp * 100 * 50) / 100 + ((sa / tq) * 100 * 50) / 100;
+              mutuals[index].score = score;
+            });
+            //sort users by their compability score
+            mutuals = mutuals.sort((a, b) => b.score - a.score);
+            res.status(200).send(mutuals);
+          } catch (error) {
+            console.error(error);
+            res.status(500).send("DB error");
+          }
+        } else if (req.query.mode == "simple") {
           const subquery = createQueryBuilder()
             .subQuery()
             .select("friendship.user2")
@@ -626,7 +714,6 @@ createConnection(SQLConfig)
             .from(FriendshipSQL, "friendship")
             .where("friendship.user1 = :id", { id: userData.id })
             .getQuery();
-
           let users = await getRepository(UserSQL)
             .createQueryBuilder()
             .select("f")
@@ -637,71 +724,13 @@ createConnection(SQLConfig)
             .leftJoinAndSelect("fJoin.friendFinderProfile", "ffp")
             .where("f.user1 IN " + subquery)
             .andWhere("f.user2 NOT IN " + subquery)
+            .andWhere("ffp.MBTI IN (:...mbtis)", {
+              mbtis: MBTIComp[userData.friendFinderProfile.MBTI],
+            })
             .andWhere("f.user2 <> :id", { id: userData.id })
             .getMany();
 
-          let mutuals: any = users.map((user) => user.user2);
-
-          //count the duplicates.
-          const mutualsCount = mutuals.reduce((acc, curr) => {
-            const key = curr.id;
-            acc[key] = (acc[key] || 0) + 1;
-            return acc;
-          }, {});
-
-          //remove duplicate user in mutuals array
-          mutuals = [...new Map(mutuals.map((u) => [u.id, u])).values()];
-
-          mutuals.forEach((mutualUser, index) => {
-            mutuals[index].mutualsCount = mutualsCount[mutualUser.id];
-            if (
-              !mutualUser.friendFinderProfile.MBTI ||
-              !mutualUser.friendFinderProfile.answers
-            ) {
-              mutuals[index].isMBTICompatible = false;
-              mutuals[index].sameAnswerCount = null;
-
-              //score only calculated by their total mutual friends
-              const tmf = mutualsCount[mutualUser.id];
-              mutuals[index].score = tmf * 2;
-              return;
-            }
-
-            mutuals[index].isMBTICompatible = MBTIComp[
-              userData.friendFinderProfile.MBTI
-            ].includes(mutualUser.friendFinderProfile.MBTI);
-
-            mutuals[index].hasMutualFriend = true;
-
-            //count same answer
-            let count = 0;
-            userData.friendFinderProfile.answers.forEach((usersAnswer, num) => {
-              if (usersAnswer === mutualUser.friendFinderProfile.answers[num]) {
-                count++;
-              }
-              return;
-            });
-
-            mutuals[index].sameAnswerCount = count;
-
-            //below are the codes for calculating the score
-            const tmf = mutualsCount[mutualUser.id]; //TOTAL MUTUAL FRIEND
-            const cp = mutuals[index] ? 1 : 0; //Compatible Personality. Is MBTI compatible or not
-            const sa = mutuals[index].sameAnswerCount; //Same Answers. Total MBTI questions with same answers
-            const tq = 10; //Total Questions. Total MBTI Test questions
-
-            const score =
-              tmf * 2 + (cp * 100 * 50) / 100 + ((sa / tq) * 100 * 50) / 100;
-            mutuals[index].score = score;
-
-            console.log(score);
-          });
-          //sort users by their compability score
-          mutuals = mutuals.sort((a, b) => b.score - a.score);
-          res.status(200).send(mutuals);
-        } catch (error) {
-          console.error(error);
-          res.status(500).send("DB error");
+          res.status(200).send(users.map((f) => f.user2));
         }
 
         //res.status(200).send(users?.friends);
