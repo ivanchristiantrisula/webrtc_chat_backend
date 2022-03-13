@@ -251,14 +251,8 @@ createConnection(SQLConfig)
             newFriend1.user2 = target.id;
             newFriend1.status = "PENDING";
 
-            const newFriend2 = new FriendshipSQL();
-            newFriend2.user1 = target.id;
-            newFriend2.user2 = user.id;
-            newFriend2.status = "PENDING";
-
             try {
               await connection.manager.save(newFriend1);
-              await connection.manager.save(newFriend2);
               res.status(200).send("Success");
             } catch (error) {
               console.error(error);
@@ -319,9 +313,9 @@ createConnection(SQLConfig)
           let pendings = await connection
             .getRepository(FriendshipSQL)
             .createQueryBuilder("friendship")
-            .leftJoinAndSelect("friendship.user2", "user")
+            .leftJoinAndSelect("friendship.user1", "user")
             .leftJoinAndSelect("user.friendFinderProfile", "ffp")
-            .where("status = :status AND friendship.user1 = :user", {
+            .where("status = :status AND friendship.user2 = :user", {
               status: "PENDING",
               user: user.id,
             })
@@ -442,7 +436,18 @@ createConnection(SQLConfig)
                 { user1: user.id, user2: target }
               )
               .execute();
+          } catch (error) {
+            console.error(error);
+            res.status(500).send("DB error");
+          }
 
+          const relationPair = new FriendshipSQL();
+          relationPair.user1 = user.id;
+          relationPair.user2 = target;
+          relationPair.status = "FRIEND";
+
+          try {
+            await connection.manager.save(relationPair);
             res.status(200).send("Success");
           } catch (error) {
             console.error(error);
