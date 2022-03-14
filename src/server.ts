@@ -728,15 +728,17 @@ createConnection(SQLConfig)
             .leftJoin(UserSQL, "u", "u.id = f.user2")
             .leftJoinAndSelect("f.user2", "fJoin")
             .leftJoinAndSelect("fJoin.friendFinderProfile", "ffp")
-            .where("f.user1 IN " + subquery)
-            .andWhere("f.user2 NOT IN " + subquery)
+            .where("f.user2 NOT IN " + subquery)
             .andWhere("ffp.MBTI IN (:...mbtis)", {
               mbtis: MBTIComp[userData.friendFinderProfile.MBTI],
             })
             .andWhere("f.user2 <> :id", { id: userData.id })
             .getMany();
 
-          res.status(200).send(users.map((f) => f.user2));
+          let filtered: any = users.map((f) => f.user2);
+          filtered = [...new Map(filtered.map((u) => [u.id, u])).values()];
+
+          res.status(200).send(filtered);
         }
 
         //res.status(200).send(users?.friends);
