@@ -366,7 +366,7 @@ createConnection(SQLConfig)
       let friendshipExist = await connection
         .getRepository(FriendshipSQL)
         .createQueryBuilder("friendship")
-        .where("friendship.user1 = :user1 and friendship.user2 = :user2", {
+        .where("friendship.user1 = :user1 AND friendship.user2 = :user2", {
           user1: userData.id,
           user2: target,
         })
@@ -379,7 +379,7 @@ createConnection(SQLConfig)
             .update(FriendshipSQL)
             .set({ status: "BLOCK" })
             .where(
-              "(friendship.user1 = :user1 and friendship.user2 = :user2) OR (friendship.user2 = :user1 and friendship.user1 = :user2)",
+              "(user1 = :user1 and user2 = :user2) OR (user2 = :user1 and user1 = :user2)",
               {
                 user1: userData.id,
                 user2: target,
@@ -416,6 +416,53 @@ createConnection(SQLConfig)
 
     app.get("/user/getBlocks", async (req, res) => {
       if (req.query.token) {
+        let user = decodeToken(req.query.token);
+        if (user) {
+          let blocks = await connection
+            .getRepository(FriendshipSQL)
+            .createQueryBuilder("friendship")
+            .leftJoinAndSelect("friendship.user2", "user")
+            .leftJoinAndSelect("user.friendFinderProfile", "ffp")
+            .where("status = :status AND friendship.user1 = :user", {
+              status: "BLOCK",
+              user: user.id,
+            })
+            .getMany();
+
+          res.status(200).send(blocks.map((block) => block.user2));
+        } else {
+          res.status(400).send({ errors: ["Invalid token. Try re-login?"] });
+        }
+      } else {
+        res.status(400).send({ errors: ["No Cookie??? :("] });
+      }
+    });
+
+    app.post("/user/unblock", async (req, res) => {
+      if (req.body.token) {
+        let user = decodeToken(req.body.token);
+        let target = req.body.target;
+
+        if (user) {
+          try {
+            await getConnection()
+              .createQueryBuilder()
+              .delete()
+              .from(FriendshipSQL)
+              .where(
+                "(user1 = :user1 AND user2 = :user2) OR (user1 = :user2 AND user2 = :user1)",
+                { user1: user.id, user2: target }
+              )
+              .execute();
+
+            res.status(200).send("OK");
+          } catch (error) {
+            console.error(error);
+            res.status(500).send("DB error");
+          }
+        } else {
+          res.status(400).send({ errors: ["Invalid token. Try re-login?"] });
+        }
       } else {
         res.status(400).send({ errors: ["No Cookie??? :("] });
       }
