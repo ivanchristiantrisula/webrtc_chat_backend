@@ -209,7 +209,7 @@ createConnection(SQLConfig)
                   .select("friendship.user2")
                   .from(FriendshipSQL, "friendship")
                   .where(
-                    `friendship.user1 = :uid AND friendship.status = 'BLOCKED'`,
+                    `friendship.user1 = :uid AND (friendship.status = 'BLOCKED' OR friendship.status = 'FRIEND' OR friendship.status = 'PENDING')`,
                     { uid: userData.id }
                   )
                   .andWhere(
@@ -219,6 +219,7 @@ createConnection(SQLConfig)
 
                 return "user.id NOT IN " + blocks;
               })
+              .andWhere("user.id <> :id", { id: userData.id })
               .getMany();
 
             res.status(200).send(users);
