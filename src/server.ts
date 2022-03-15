@@ -115,7 +115,10 @@ createConnection(SQLConfig)
           };
 
           transporter.sendMail(mailOptions, (err, info) => {
-            if (err) throw err;
+            if (err) {
+              console.error(err);
+              res.status(500).send("Mailer error");
+            }
           });
 
           res.status(200).send({ code: code });
@@ -544,16 +547,17 @@ createConnection(SQLConfig)
         let user = decodeToken(req.body.token);
 
         if (user) {
-          let result = await getConnection()
-            .createQueryBuilder()
-            .update(FriendFinderProfile)
-            .set({ MBTI: req.body.type, answers: req.body.answers })
-            .where("id = :id", { id: user.friendFinderProfile.id })
-            .execute();
-          if (result.affected?.valueOf) {
-            console.log(result.affected?.valueOf);
+          try {
+            let result = await getConnection()
+              .createQueryBuilder()
+              .update(FriendFinderProfile)
+              .set({ MBTI: req.body.type, answers: req.body.answers })
+              .where("id = :id", { id: user.friendFinderProfile.id })
+              .execute();
+
             res.status(200).send("Success");
-          } else {
+          } catch (error) {
+            console.error(error);
             res.status(500).send("Internal Error");
           }
         } else {
@@ -576,18 +580,19 @@ createConnection(SQLConfig)
             username: user.username,
           };
 
-          let result = await getConnection()
-            .createQueryBuilder()
-            .update(UserSQL)
-            .set({ name: req.body.name, bio: req.body.bio })
-            .where("id = :id", { id: user.id })
-            .execute();
+          try {
+            let result = await getConnection()
+              .createQueryBuilder()
+              .update(UserSQL)
+              .set({ name: req.body.name, bio: req.body.bio })
+              .where("id = :id", { id: user.id })
+              .execute();
 
-          if (result.affected?.toString) {
             res.status(200).send({
               user: userData,
             });
-          } else {
+          } catch (error) {
+            console.error(error);
             res.status(500).send("Internal DB Error");
           }
         } else {
@@ -893,7 +898,11 @@ createConnection(SQLConfig)
           text: `You have requested to reset your password for your WebRTC Chat App account. Here is the verification code : ${code}`,
         };
         transporter.sendMail(mailOptions, (err, info) => {
-          if (err) throw err;
+          if (err) {
+            console.error(err);
+            res.status(500).send("Mailer error");
+            return;
+          }
         });
         res.status(200).send({ code: code });
       } else {
