@@ -1178,6 +1178,16 @@ createConnection(SQLConfig)
         //   });
         // });
       });
+
+      socket.on("notifyOtherToRefetch", ({ uid }) => {
+        const targetSID = Object.keys(users).find(
+          (key) => users[key].id === uid
+        );
+
+        if (targetSID !== undefined) {
+          io.to(targetSID).emit("addToFriendlist", userData);
+        }
+      });
     });
 
     server.listen(process.env.PORT, () => {
