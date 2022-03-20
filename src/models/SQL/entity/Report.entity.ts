@@ -41,6 +41,6 @@ export default class Report {
   @Column({ nullable: true })
   closedDate: Date;
 
-  @Column()
+  @Column({ nullable: true })
   isReporteeBanned: boolean;
 }

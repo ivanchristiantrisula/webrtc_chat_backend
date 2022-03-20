@@ -841,7 +841,6 @@ createConnection(SQLConfig)
           .createQueryBuilder()
           .select("user")
           .from(UserSQL, "user")
-          .leftJoinAndSelect("user.friendFinderProfile", "ffp")
           .where("user.isBanned = true")
           .getMany();
 
@@ -858,7 +857,7 @@ createConnection(SQLConfig)
           .createQueryBuilder()
           .update(UserSQL)
           .set({ isBanned: false })
-          .where("user.id = :id", { id: req.body.userID })
+          .where("id = :id", { id: req.body.userID })
           .execute();
 
         res.status(200).send("User unbanned!");
@@ -975,7 +974,27 @@ createConnection(SQLConfig)
           .createQueryBuilder()
           .select("report")
           .from(ReportSQL, "report")
+          .leftJoinAndSelect("report.reporter", "reporter")
+          .leftJoinAndSelect("report.reportee", "reportee")
           .getMany();
+
+        res.status(200).send(reports);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send("DB error");
+      }
+    });
+
+    app.get("/report/getReportDetail", async (req, res) => {
+      try {
+        let reports = await getConnection()
+          .createQueryBuilder()
+          .select("report")
+          .from(ReportSQL, "report")
+          .where("report.id = :id", { id: req.query.id })
+          .leftJoinAndSelect("report.reporter", "reporter")
+          .leftJoinAndSelect("report.reportee", "reportee")
+          .getOne();
 
         res.status(200).send(reports);
       } catch (error) {
@@ -1155,7 +1174,17 @@ createConnection(SQLConfig)
       });
 
       socket.on("requestMeetingMembers", (data) => {
-        socket.emit("meetingMembers", meetingRooms[data]);
+        let usersInfo = new Array();
+        meetingRooms[data].forEach((sid: string) => {
+          if (sid == socket.id || users[sid] === undefined || !users[sid])
+            return;
+          usersInfo.push(users[sid]);
+        });
+        console.log(usersInfo);
+        socket.emit("meetingMembers", {
+          sockets: meetingRooms[data],
+          userDatas: usersInfo,
+        });
       });
 
       socket.on("transferSDPMeeting", (data) => {
@@ -1166,7 +1195,10 @@ createConnection(SQLConfig)
 
       socket.on("leaveMeeting", ({ meetingID }) => {
         meetingRooms[meetingID].forEach((sid) => {
-          io.to(sid).emit("removeMeetingPeer", { socketID: sid });
+          io.to(sid).emit("removeMeetingPeer", {
+            socketID: sid,
+            userData: userData,
+          });
         });
       });
 
