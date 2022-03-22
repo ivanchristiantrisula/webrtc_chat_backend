@@ -212,17 +212,16 @@ createConnection(SQLConfig)
                   .select("friendship.user2")
                   .from(FriendshipSQL, "friendship")
                   .where(
-                    `friendship.user1 = :uid AND (friendship.status = 'BLOCKED' OR friendship.status = 'FRIEND' OR friendship.status = 'PENDING')`,
+                    `friendship.user1 = :uid AND (friendship.status = 'BLOCK' OR friendship.status = 'FRIEND' OR friendship.status = 'PENDING')`,
                     { uid: userData.id }
                   )
-                  .andWhere(
-                    "user.isVerified IS TRUE AND user.isBanned IS FALSE"
-                  )
+
                   .getQuery();
 
                 return "user.id NOT IN " + blocks;
               })
               .andWhere("user.id <> :id", { id: userData.id })
+              .andWhere("user.isVerified IS TRUE AND user.isBanned IS FALSE")
               .getMany();
 
             res.status(200).send(users);
@@ -1211,13 +1210,23 @@ createConnection(SQLConfig)
         // });
       });
 
-      socket.on("notifyOtherToRefetch", ({ uid }) => {
+      socket.on("notifyOtherToAddFriendlist", ({ uid }) => {
         const targetSID = Object.keys(users).find(
           (key) => users[key].id === uid
         );
 
         if (targetSID !== undefined) {
           io.to(targetSID).emit("addToFriendlist", userData);
+        }
+      });
+
+      socket.on("notifyOtherToRemoveFriendlist", ({ uid }) => {
+        const targetSID = Object.keys(users).find(
+          (key) => users[key].id === uid
+        );
+
+        if (targetSID !== undefined) {
+          io.to(targetSID).emit("removeFromFriendlist", userData);
         }
       });
 
