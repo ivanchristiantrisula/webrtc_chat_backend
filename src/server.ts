@@ -1220,6 +1220,18 @@ createConnection(SQLConfig)
           io.to(targetSID).emit("addToFriendlist", userData);
         }
       });
+
+      socket.on("notifyFriendInvitationToTarget", ({ uid }) => {
+        const targetSID = Object.keys(users).find(
+          (key) => users[key].id === uid
+        );
+
+        if (targetSID === undefined) return;
+
+        io.to(targetSID).emit("checkFriendInvitations", {
+          name: userData.name,
+        });
+      });
     });
 
     server.listen(process.env.PORT, () => {
