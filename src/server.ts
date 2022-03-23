@@ -188,41 +188,76 @@ createConnection(SQLConfig)
     });
 
     app.get("/user/findUser", async (req, res) => {
-      let keyword = req.query.keyword;
+      let keyword: string = req.query.keyword;
 
       if (req.query.token) {
         let userData = decodeToken(req.query.token);
 
         if (userData) {
           try {
-            let users = await getConnection()
-              .createQueryBuilder()
-              .select("user")
-              .from(UserSQL, "user")
-              .leftJoinAndSelect("user.friendFinderProfile", "ffp")
-              .where(
-                "LOWER(user.username) like LOWER('%' || :username || '%')",
-                {
-                  username: keyword,
-                }
-              )
-              .andWhere((qb) => {
-                const blocks = qb
-                  .subQuery()
-                  .select("friendship.user2")
-                  .from(FriendshipSQL, "friendship")
-                  .where(
-                    `friendship.user1 = :uid AND (friendship.status = 'BLOCK' OR friendship.status = 'FRIEND' OR friendship.status = 'PENDING')`,
-                    { uid: userData.id }
-                  )
+            const isEmail = String(keyword)
+              .toLowerCase()
+              .match(
+                /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+              );
+            let users: UserSQL[];
 
-                  .getQuery();
+            if (isEmail) {
+              users = await getConnection()
+                .createQueryBuilder()
+                .select("user")
+                .from(UserSQL, "user")
+                .leftJoinAndSelect("user.friendFinderProfile", "ffp")
+                .where("LOWER(user.email) = :keyword", {
+                  keyword: keyword.toLowerCase(),
+                })
+                .andWhere((qb) => {
+                  const blocks = qb
+                    .subQuery()
+                    .select("friendship.user2")
+                    .from(FriendshipSQL, "friendship")
+                    .where(
+                      `friendship.user1 = :uid AND (friendship.status = 'BLOCK' OR friendship.status = 'FRIEND' OR friendship.status = 'PENDING')`,
+                      { uid: userData.id }
+                    )
 
-                return "user.id NOT IN " + blocks;
-              })
-              .andWhere("user.id <> :id", { id: userData.id })
-              .andWhere("user.isVerified IS TRUE AND user.isBanned IS FALSE")
-              .getMany();
+                    .getQuery();
+
+                  return "user.id NOT IN " + blocks;
+                })
+                .andWhere("user.id <> :id", { id: userData.id })
+                .andWhere("user.isVerified IS TRUE AND user.isBanned IS FALSE")
+                .getMany();
+            } else {
+              users = await getConnection()
+                .createQueryBuilder()
+                .select("user")
+                .from(UserSQL, "user")
+                .leftJoinAndSelect("user.friendFinderProfile", "ffp")
+                .where(
+                  "LOWER(user.username) like LOWER('%' || :username || '%')",
+                  {
+                    username: keyword,
+                  }
+                )
+                .andWhere((qb) => {
+                  const blocks = qb
+                    .subQuery()
+                    .select("friendship.user2")
+                    .from(FriendshipSQL, "friendship")
+                    .where(
+                      `friendship.user1 = :uid AND (friendship.status = 'BLOCK' OR friendship.status = 'FRIEND' OR friendship.status = 'PENDING')`,
+                      { uid: userData.id }
+                    )
+
+                    .getQuery();
+
+                  return "user.id NOT IN " + blocks;
+                })
+                .andWhere("user.id <> :id", { id: userData.id })
+                .andWhere("user.isVerified IS TRUE AND user.isBanned IS FALSE")
+                .getMany();
+            }
 
             res.status(200).send(users);
           } catch (error) {
