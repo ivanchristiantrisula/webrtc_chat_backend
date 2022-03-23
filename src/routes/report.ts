@@ -71,7 +71,6 @@ app.post("/closeReport", (req, res) => {
       },
     },
     (err, docs) => {
-      console.log(docs);
       if (err) res.status(500).send({ errors: [err] });
       return;
     }
