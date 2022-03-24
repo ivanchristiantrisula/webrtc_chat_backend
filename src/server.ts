@@ -622,8 +622,19 @@ createConnection(SQLConfig)
               .where("id = :id", { id: user.id })
               .execute();
 
+            let newData = await getConnection()
+              .createQueryBuilder()
+              .select("user")
+              .from(UserSQL, "user")
+              .where("user.id = :id", { id: userData.id })
+              .leftJoinAndSelect("user.friendFinderProfile", "ffp")
+              .getOne();
+
+            let token = require("./library/generateToken")(newData);
+
             res.status(200).send({
-              user: userData,
+              user: newData,
+              token: token,
             });
           } catch (error) {
             console.error(error);
@@ -654,12 +665,18 @@ createConnection(SQLConfig)
             return;
           }
 
-          let oldUser = await getConnection()
-            .createQueryBuilder()
-            .select(["user.password"])
-            .from(UserSQL, "user")
-            .where("id = :d", { id: user.id })
-            .getOne();
+          let oldUser;
+          try {
+            oldUser = await getConnection()
+              .createQueryBuilder()
+              .select("user.password")
+              .from(UserSQL, "user")
+              .where("user.id = :id", { id: user.id })
+              .getOne();
+          } catch (error) {
+            console.log(error);
+            res.status(500).send("DB Error");
+          }
 
           bcrypt.compare(
             req.body.old,
@@ -667,7 +684,7 @@ createConnection(SQLConfig)
             async (err, passCompareResult) => {
               if (err) {
                 console.error(err);
-                return;
+                res.status(500).send("Internal Error");
               }
 
               if (passCompareResult) {
@@ -854,7 +871,20 @@ createConnection(SQLConfig)
                     .where("id = :id", { id: user.id })
                     .execute();
 
-                  res.status(200).send("OK");
+                  let newData = await getConnection()
+                    .createQueryBuilder()
+                    .select("user")
+                    .from(UserSQL, "user")
+                    .where("user.id = :id", { id: user.id })
+                    .leftJoinAndSelect("user.friendFinderProfile", "ffp")
+                    .getOne();
+
+                  let token = require("./library/generateToken")(newData);
+
+                  res.status(200).send({
+                    token: token,
+                    user: newData,
+                  });
                 } catch (error) {
                   res.status(500).send("DB error");
                 }
