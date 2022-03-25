@@ -4,6 +4,9 @@ import {
   Column,
   OneToOne,
   JoinColumn,
+  ManyToMany,
+  OneToMany,
+  ManyToOne,
 } from "typeorm";
 import User from "./User.entity";
 
@@ -12,11 +15,11 @@ export default class Report {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @OneToOne(() => User)
+  @ManyToOne(() => User)
   @JoinColumn()
   reporter: User;
 
-  @OneToOne(() => User)
+  @ManyToOne(() => User)
   @JoinColumn()
   reportee: User;
 
