@@ -1011,7 +1011,7 @@ createConnection(SQLConfig)
             const report = new ReportSQL();
             report.reporter = req.body.reporter;
             report.reportee = req.body.reportee;
-            report.type = req.body.proof ? "Chat" : "Profile";
+            report.type = req.body.type;
             report.category = req.body.category;
             report.proof = JSON.stringify(req.body.proof) || "";
             report.description = req.body.description;
