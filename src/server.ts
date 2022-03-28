@@ -920,7 +920,7 @@ createConnection(SQLConfig)
         await getConnection()
           .createQueryBuilder()
           .update(UserSQL)
-          .set({ isBanned: false })
+          .set({ isBanned: false, banReportID: undefined, banDate: undefined })
           .where("id = :id", { id: req.body.userID })
           .execute();
 
@@ -1040,6 +1040,7 @@ createConnection(SQLConfig)
           .from(ReportSQL, "report")
           .leftJoinAndSelect("report.reporter", "reporter")
           .leftJoinAndSelect("report.reportee", "reportee")
+          .orderBy("report.timestamp", "DESC")
           .getMany();
 
         res.status(200).send(reports);
