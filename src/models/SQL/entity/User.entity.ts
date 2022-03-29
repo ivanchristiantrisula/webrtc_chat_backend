@@ -27,7 +27,7 @@ export default class User {
   username: string;
 
   @Column({ default: true })
-  bio: string = "";
+  bio: string = "Hi im new!";
 
   @Column({ default: true })
   profilepicture: string =
