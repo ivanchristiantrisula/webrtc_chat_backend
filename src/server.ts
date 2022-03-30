@@ -164,14 +164,12 @@ createConnection(SQLConfig)
         bcrypt.compare(password, user.password, (err, result) => {
           if (err) console.error(err);
           if (!result) {
-            res.status(401).send({ errors: ["Wrong password"] });
+            res.status(401).send("Wrong Password");
             return;
           }
 
           if (user?.isBanned) {
-            res.status(403).send({
-              errors: ["You are banned from this site"],
-            });
+            res.status(403).send("You are banned from this site");
             return;
           }
 
@@ -183,7 +181,7 @@ createConnection(SQLConfig)
           });
         });
       } else {
-        res.status(401).send({ errors: ["User not found!"] });
+        res.status(401).send("User not found!");
       }
     });
 
